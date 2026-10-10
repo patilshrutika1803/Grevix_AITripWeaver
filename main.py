@@ -1,0 +1,371 @@
+"""
+FastAPI backend entry point with SSE streaming support.
+"""
+import os
+import uuid
+from typing import Optional
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import StreamingResponse, JSONResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from pymongo.database import Database
+
+from agent.agentic_workflow import GraphBuilder, build_final_plan, validate_final_state
+from api.v1.trips import router as api_v1_router
+from api.v1.users import router as users_router
+from api.v1.knowledge import router as knowledge_router, user_router as user_knowledge_router
+from api.v1.collaboration import router as collaboration_router
+from api.v1.expenses import router as expenses_router
+from api.v1.journal import router as journal_router
+from api.v1.utilities import router as utilities_router
+from api.v1.admin import router as admin_router
+from api.v1.dependencies import get_optional_current_user
+from api.v1.dependencies import CurrentUser
+from database.mongodb import get_database
+from services.trip_service import TripService
+from utils.streaming import format_sse_event
+from memory.long_term import LongTermMemory
+from logger.logging import get_logger
+
+logger = get_logger(__name__)
+
+GENERIC_ERROR_MESSAGE = "Unable to generate the travel plan at this time. Please try again."
+PREFERENCE_ERROR_MESSAGE = "Unable to save your preferences. Please try again."
+DEFAULT_ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
+def _get_allowed_origins() -> list[str]:
+    configured_origins = os.getenv("PACK_GO_ALLOWED_ORIGINS", "")
+    if configured_origins:
+        origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+        return origins
+    return DEFAULT_ALLOWED_ORIGINS
+
+
+app = FastAPI(title="PACK & GO API")
+
+app.include_router(api_v1_router)
+app.include_router(users_router)
+app.include_router(knowledge_router)
+app.include_router(user_knowledge_router)
+app.include_router(collaboration_router)
+app.include_router(expenses_router)
+app.include_router(journal_router)
+app.include_router(utilities_router)
+app.include_router(admin_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_get_allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if request.url.path.startswith("/api/v1/users/me/preferences") and exc.status_code >= 500:
+        return JSONResponse(status_code=exc.status_code, content={"error": PREFERENCE_ERROR_MESSAGE})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail},
+    )
+
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    if request.url.path.startswith("/api/v1/users/me/preferences"):
+        return JSONResponse(status_code=422, content={"error": "Unable to save your preferences. Please check the submitted values."})
+    return JSONResponse(status_code=422, content={"error": "Request validation failed."})
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request, exc: Exception):
+    logger.exception("Unhandled server error during %s %s", request.method, request.url.path)
+    message = PREFERENCE_ERROR_MESSAGE if request.url.path.startswith("/api/v1/users/me/preferences") else GENERIC_ERROR_MESSAGE
+    return JSONResponse(status_code=500, content={"error": message})
+
+class PlanRequest(BaseModel):
+    question: str
+    thread_id: Optional[str] = None
+    remember_me: bool = True
+
+
+PROVIDER_FAILURE_MARKERS = (
+    "api key",
+    "authentication",
+    "authorization",
+    "credential",
+    "quota",
+    "rate limit",
+    "rate_limit",
+    "provider",
+    "429",
+    "401",
+    "403",
+    "unavailable",
+)
+
+
+def _workflow_failure_message(state: dict) -> str:
+    failure_reasons = state.get("failure_reasons", {})
+    reason_text = " ".join(str(reason).lower() for reason in failure_reasons.values())
+    if any(marker in reason_text for marker in PROVIDER_FAILURE_MARKERS):
+        return "The trip planner is temporarily unavailable because an AI service could not respond. Check provider credentials or quota and try again."
+    return "Workflow failed validation."
+
+
+def _public_failure_reasons(state: dict) -> dict[str, str]:
+    return {
+        agent: "The agent could not complete its step."
+        for agent in state.get("failure_reasons", {})
+    }
+
+
+def _knowledge_sources(answer: object) -> list[dict]:
+    if not answer:
+        return []
+    sources = answer.get("sources", []) if isinstance(answer, dict) else getattr(answer, "sources", [])
+    return [source.model_dump() if hasattr(source, "model_dump") else source for source in sources]
+
+
+def _knowledge_metadata(answer: object) -> dict[str, object]:
+    if isinstance(answer, dict):
+        return {
+            "grounded": bool(answer.get("grounded", False)),
+            "retrieved_document_count": int(answer.get("retrieved_document_count", 0)),
+            "retrieval_status": answer.get("retrieval_status", "unknown"),
+        }
+    return {
+        "grounded": bool(getattr(answer, "grounded", False)) if answer else False,
+        "retrieved_document_count": int(getattr(answer, "retrieved_document_count", 0)) if answer else 0,
+        "retrieval_status": getattr(answer, "retrieval_status", "unknown") if answer else "unknown",
+    }
+
+
+def _saved_preferences_context(user: CurrentUser | None, db: Database) -> dict:
+    if not user:
+        return {}
+    profile = db.users.find_one({"_id": user.id}, {"preferences": 1}) or {}
+    preferences = profile.get("preferences")
+    if not preferences:
+        return {}
+    return {
+        key: value
+        for key, value in {
+            "travel_style": preferences.get("travel_style"),
+            "interests": preferences.get("interests"),
+            "things_to_avoid": preferences.get("things_to_avoid"),
+            "budget_preference": preferences.get("budget_preference"),
+            "hotel_preference": preferences.get("hotel_preference"),
+            "food_preference": preferences.get("food_preference"),
+            "preferred_destinations": preferences.get("preferred_destinations"),
+            "preferred_budget_min": preferences.get("preferred_budget_min"),
+            "preferred_budget_max": preferences.get("preferred_budget_max"),
+            "preferred_currency": preferences.get("preferred_currency"),
+            "preferred_trip_duration": preferences.get("preferred_trip_duration"),
+            "is_domestic": preferences.get("is_domestic"),
+        }.items()
+        if value not in (None, [], {})
+    }
+
+@app.post("/plan")
+async def plan_trip_sync(request: PlanRequest, user: CurrentUser | None = Depends(get_optional_current_user), db: Database = Depends(get_database)):
+    """Backward compatible synchronous endpoint."""
+    try:
+        thread_id = request.thread_id or str(uuid.uuid4())
+
+        graph_builder = GraphBuilder()
+        graph = graph_builder.build_graph()
+
+        config = {"configurable": {"thread_id": thread_id}}
+
+        # We invoke the graph
+        output = graph.invoke(
+            {"messages": [request.question], "saved_preferences_context": _saved_preferences_context(user, db)},
+            config=config,
+        )
+
+        if output.get("intent") == "general_chat":
+            return {
+                "thread_id": thread_id,
+                "state": "complete",
+                "intent": "general_chat",
+                "response": output.get("chat_response", ""),
+                "chat_response": output.get("chat_response", ""),
+                "sources": _knowledge_sources(output.get("knowledge_answer")),
+                **_knowledge_metadata(output.get("knowledge_answer")),
+            }
+
+        validation_errors = validate_final_state(output)
+        if validation_errors:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": _workflow_failure_message(output),
+                    "details": validation_errors,
+                    "failed_agents": output.get("failed_agents", []),
+                    "failure_reasons": _public_failure_reasons(output),
+                },
+            )
+
+        # Save to long term memory if requested
+        if request.remember_me and "preferences" in output and output["preferences"]:
+            pref = output["preferences"]
+            memory = LongTermMemory()
+            memory.save_preferences(
+                thread_id=thread_id,
+                destination=pref.destination,
+                travel_style=pref.travel_style,
+                interests=pref.interests,
+                things_to_avoid=pref.things_to_avoid,
+                budget=pref.total_budget,
+                duration=pref.duration
+            )
+
+        final_plan = build_final_plan(output)
+
+        try:
+            trip_service = TripService(db)
+            saved_trip = trip_service.create_trip(trip_service.travelplan_to_trip(final_plan, user_id=user.id if user else None))
+        except Exception:
+            logger.exception("Failed to persist generated TravelPlan for thread_id=%s", thread_id)
+            return JSONResponse(status_code=500, content={"error": GENERIC_ERROR_MESSAGE})
+
+        return {"thread_id": thread_id, "state": "complete", "trip_id": saved_trip["id"], "plan": final_plan}
+    except Exception as exc:
+        logger.exception("Unexpected error in /plan request")
+        return JSONResponse(status_code=500, content={"error": GENERIC_ERROR_MESSAGE})
+
+@app.get("/graph")
+async def get_graph_png():
+    """Returns the LangGraph architecture as a PNG image."""
+    try:
+        graph_builder = GraphBuilder()
+        graph = graph_builder.build_graph()
+        png_data = graph.get_graph().draw_mermaid_png()
+        return Response(content=png_data, media_type="image/png")
+    except Exception as exc:
+        logger.exception("Unexpected error generating graph PNG")
+        return JSONResponse(status_code=500, content={"error": GENERIC_ERROR_MESSAGE})
+
+@app.post("/plan/stream")
+async def plan_trip_stream(request: PlanRequest, user: CurrentUser | None = Depends(get_optional_current_user), db: Database = Depends(get_database)):
+    """SSE Streaming endpoint for live updates."""
+    thread_id = request.thread_id or str(uuid.uuid4())
+
+    async def event_generator():
+        try:
+            graph_builder = GraphBuilder()
+            graph = graph_builder.build_graph()
+            config = {"configurable": {"thread_id": thread_id}}
+
+            yield format_sse_event("running", "System", "Starting PACK & GO workflow...", data={"thread_id": thread_id})
+
+            # Debug stream events expose actual node starts and results.
+            for event in graph.stream(
+                {"messages": [request.question], "saved_preferences_context": _saved_preferences_context(user, db)},
+                config=config,
+                stream_mode="debug",
+            ):
+                payload = event.get("payload", {})
+                node_name = payload.get("name")
+                if not node_name:
+                    continue
+                if event.get("type") == "task":
+                    yield format_sse_event("agent_started", node_name, f"{node_name} is working.")
+                elif event.get("type") == "task_result":
+                    result = payload.get("result") or {}
+                    failed_agents = result.get("failed_agents", []) if isinstance(result, dict) else []
+                    weather = result.get("weather_info") if isinstance(result, dict) else None
+                    fallback_used = getattr(weather, "fallback_used", False)
+                    if isinstance(weather, dict):
+                        fallback_used = weather.get("fallback_used", False)
+                    if fallback_used:
+                        event_status = "agent_fallback"
+                        message = f"{node_name} completed with fallback data."
+                    elif payload.get("error") is not None or node_name in failed_agents:
+                        event_status = "agent_error"
+                        message = f"{node_name} could not complete its step."
+                    else:
+                        event_status = "agent_completed"
+                        message = f"{node_name} completed processing."
+                    yield format_sse_event(event_status, node_name, message)
+
+            # Get the FULL merged state after all nodes have run
+            final_state = graph.get_state(config).values
+
+            # After complete, save to long term memory
+            if final_state and request.remember_me and "preferences" in final_state and final_state["preferences"]:
+                pref = final_state["preferences"]
+                memory = LongTermMemory()
+                memory.save_preferences(
+                    thread_id=thread_id,
+                    destination=pref.destination,
+                    travel_style=pref.travel_style,
+                    interests=pref.interests,
+                    things_to_avoid=pref.things_to_avoid,
+                    budget=pref.total_budget,
+                    duration=pref.duration
+                )
+
+            if final_state:
+                if final_state.get("intent") == "general_chat":
+                    chat_errors = validate_final_state(final_state)
+                    if chat_errors:
+                        yield format_sse_event(
+                            "error",
+                            "System",
+                            _workflow_failure_message(final_state),
+                            data={"details": chat_errors},
+                        )
+                        return
+                    yield format_sse_event(
+                        "done",
+                        "System",
+                        "Chat response complete.",
+                        data={
+                            "intent": "general_chat",
+                            "response": final_state.get("chat_response", ""),
+                            "chat_response": final_state.get("chat_response", ""),
+                            "sources": _knowledge_sources(final_state.get("knowledge_answer")),
+                            **_knowledge_metadata(final_state.get("knowledge_answer")),
+                        },
+                    )
+                    return
+
+                validation_errors = validate_final_state(final_state)
+                if validation_errors:
+                    yield format_sse_event(
+                        "error",
+                        "System",
+                        _workflow_failure_message(final_state),
+                        data={
+                            "details": validation_errors,
+                            "failed_agents": final_state.get("failed_agents", []),
+                            "failure_reasons": _public_failure_reasons(final_state),
+                        },
+                    )
+                else:
+                    final_plan = build_final_plan(final_state)
+                    trip_service = TripService(db)
+                    saved_trip = trip_service.create_trip(
+                        trip_service.travelplan_to_trip(final_plan, user_id=user.id if user else None)
+                    )
+                    yield format_sse_event(
+                        "done",
+                        "System",
+                        "Workflow complete.",
+                        data={**final_plan.model_dump(mode="json"), "trip_id": saved_trip["id"]},
+                    )
+            else:
+                yield format_sse_event("error", "System", "Failed to generate plan.")
+
+        except Exception as exc:
+            logger.exception("Unexpected error in /plan/stream request for thread_id=%s", thread_id)
+            yield format_sse_event("error", "System", GENERIC_ERROR_MESSAGE)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+/* ── Design Tokens ─────────────────────────────────────────────── */
+:root {
+  --bg:            #f6f0e4;
+  --surface:       #fffaf1;
+  --surface-strong: #ffffff;
+  --ink:           #141414;
+  --muted:         #665f55;
+  --line:          #141414;
+  --primary:       #3d5cff;
+  --pink:          #f53c8f;
+  --yellow:        #ffc93c;
+  --teal:          #2fbf9f;
+  --danger:        #c8314d;
+  --text:          var(--ink);
+  --text-muted:    var(--muted);
+  --text-dim:      #9a9185;
+  --surface2:      #eee5d5;
+  --border:        rgba(20,20,20,.2);
+  --border-light:  rgba(20,20,20,.12);
+  --accent:        var(--teal);
+  --primary-glow:  rgba(61,92,255,.2);
+  --gradient:      linear-gradient(100deg, var(--primary), var(--pink));
+  --radius:        18px;
+  --radius-lg:     30px;
+  --radius-full:   999px;
+  --shadow:        7px 7px 0 var(--ink);
+  --shadow-soft:   0 18px 40px rgba(20,20,20,.10);
+}
+
+/* ── Reset ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Animated Background ───────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 84% 7%, rgba(245,60,143,.12), transparent 22%),
+    radial-gradient(circle at 8% 80%, rgba(47,191,159,.10), transparent 24%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* ── Typography ────────────────────────────────────────────────── */
+h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; }
+
+/* Keep keyboard navigation visible across shared and page-specific controls. */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(61, 92, 255, .55);
+  outline-offset: 3px;
+}
+
+/* ── Glass Card ────────────────────────────────────────────────── */
+.glass { background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius); }
+
+/* ── Gradient Text ─────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(100deg, var(--primary), var(--pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Animations ────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px var(--primary-glow); }
+  50%       { box-shadow: 0 0 40px var(--primary-glow), 0 0 60px rgba(108,99,255,0.15); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dash {
+  from { stroke-dashoffset: 283; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes typewriter {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Skeleton Loader ───────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: var(--radius);
+}
+
+/* ── Utility classes ───────────────────────────────────────────── */
+.fade-in-up  { animation: fadeInUp 0.5s ease both; }
+.fade-in     { animation: fadeIn 0.4s ease both; }
+.slide-left  { animation: slideInLeft 0.4s ease both; }
