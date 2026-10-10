@@ -1,442 +1,423 @@
-# Grevix AI TripWeaver â€” AI-Powered Collaborative Travel Planning
+# Grevix AI TripWeaver
+### An AI-Powered Multi-Agent Travel Planner and Collaborative Trip Management Platform
 
-> **Plan less. Travel more.** Grevix AI TripWeaver is the hackathon submission
-> built around an AI-assisted travel-planning experience: itinerary planning,
-> trip organization, group collaboration, travel utilities, and retrieval-augmented
-> travel knowledge. It is derived from the author's existing PACK & GO project;
-> the event-period changes are documented separately and must be verified before submission.
+**Hackathon:** Grevix AfterCode · **Category:** AI / Full-Stack Web Application · **Repository:** [Grevix_AITripWeaver](https://github.com/patilshrutika1803/Grevix_AITripWeaver) · **Developer:** Shrutika Patil
 
--   **Hackathon repository:** https://github.com/patilshrutika1803/Grevix_AITripWeaver
--   **Original college-project repository:** https://github.com/patilshrutika1803/Pack-Go (preserved separately)
--   **Author:** Shrutika Patil
--   **Local frontend:** http://localhost:5173
--   **Local API docs:** http://127.0.0.1:8000/docs
--   **Previous deployment targets:** https://pack-go-cyan.vercel.app (frontend) and https://pack-go.onrender.com (backend); these are from the original PACK & GO project and are not confirmed as deployments of this hackathon repository.
-
-> **Status disclaimer:** These are the project's documented deployment
-> targets, not a guarantee that every live workflow is healthy. The
-> latest recorded audit found MongoDB connectivity and backend
-> test-suite blockers. See [Verification
-> Status](#16-verification-status-and-known-limitations).
-
-## Grevix AfterCode Submission
-
-- **Event:** Grevix AfterCode
-- **Submission repository:** `Grevix_AITripWeaver`
-- **Participant:** Shrutika Patil
-- **Assessment format:** 8-hour build window; submit the GitHub repository URL.
-- **Problem selection:** The organizer's guidelines state there is no fixed problem statement or mandatory technology stack. This README describes the team's self-selected travel-planning problem; it is **not** an official organizer-issued problem statement.
-- **Development policy:** AI-assisted development and existing libraries/frameworks/APIs are allowed. The guidelines also state that the project must be developed during the official event period and that participants must not claim someone else's work as their own. This repository is based on the author's existing PACK & GO college project; disclose that reuse and identify event-period changes accurately. Do not imply that the entire codebase was created from scratch during the event.
-- **Challenge-card readiness:** The initial idea may need to change after an unexpected Challenge Card. Keep a dated development log of actual decisions and changes.
-
-### Self-selected problem statement
-
-Travel planning is fragmented across destination research, itinerary creation, budget estimation, weather checks, and group coordination. Grevix AI TripWeaver aims to bring these steps into one AI-assisted experience, with saved trips, collaborative planning, and travel knowledge retrieval. The exact event-period scope should be limited to features that are implemented and tested in this repository.
-
-### Event-period change log
-
-Add only real changes made during the official event. Example template:
-
-| Time / checkpoint | Change made | Evidence |
-|---|---|---|
-| Initial setup | Cloned and inspected the existing project; verified frontend build and tests | Build/test output |
-| Implementation | _Fill in the actual feature implemented during the event_ | _Commit / test / screenshot_ |
-| Final verification | _Fill in actual checks performed_ | _Test output / demo_ |
-
-> **Current verification snapshot (local, 11 Oct 2026):** frontend production build succeeded with a non-blocking large-chunk warning; frontend tests passed (9/9); `pip check` reported no broken requirements; importing `main` succeeded; `GET /docs` returned HTTP 200. The browser displayed a blank page during one local run, so the frontend's end-to-end rendering is **not yet verified**. MongoDB connectivity and live external-service workflows have not been confirmed in this session. Update this snapshot after fixing and retesting.
-
-## Table of Contents
-
-1.  [Problem Statement](#1-problem-statement)
-2.  [Proposed Solution](#2-proposed-solution)
-3.  [Goals and Scope](#3-goals-and-scope)
-4.  [Features](#4-features)
-5.  [Architecture](#5-architecture)
-6.  [Technology Stack](#6-technology-stack)
-7.  [Repository Structure](#7-repository-structure)
-8.  [Main Workflows](#8-main-workflows)
-9.  [Local Setup](#9-local-setup)
-10. [Environment Variables](#10-environment-variables)
-11. [Run Locally](#11-run-locally)
-12. [API Overview](#12-api-overview)
-13. [Deployment](#13-deployment)
-14. [Testing](#14-testing)
-15. [Security](#15-security)
-16. [Verification Status and Known
-    Limitations](#16-verification-status-and-known-limitations)
-17. [Troubleshooting](#17-troubleshooting)
-18. [Development Workflow](#18-development-workflow)
-19. [Future Improvements](#19-future-improvements)
-
-------------------------------------------------------------------------
+> **One platform to imagine, plan, optimize, coordinate, and remember a trip.**
 
 ## 1. Problem Statement
 
-Planning a trip often means switching between different services to
-research destinations, build an itinerary, estimate costs, check weather
-and currency, coordinate with companions, and keep documents and
-memories organized. Group trips make this harder: participants need to
-share information, discuss alternatives, vote on proposals, manage
-expenses, and keep plans aligned as details change.
+**Self-selected hackathon problem statement:** *Design an intelligent, collaborative travel-planning platform that converts a traveller's natural-language goals into practical, budget-aware, personalized itineraries while centralizing group decisions, expenses, logistics, and trusted travel information.*
 
-Travel knowledge can also be fragmented across websites and documents.
-Generic AI answers may not be grounded in a user's available reference
-material, and useful information can be difficult to find again.
+Trip planning is typically fragmented. A traveller researches destinations in one tab, checks weather in another, estimates expenses manually, creates a day-by-day schedule in notes, and coordinates with friends through disconnected chats. This increases planning time and introduces conflicting preferences, duplicated effort, unrealistic schedules, and forgotten decisions.
 
-**PACK & GO aims to solve this fragmentation by combining AI-powered
-trip planning, saved itineraries, group coordination, travel utilities,
-and a retrieval-augmented knowledge experience in one platform.**
+For group travel, the challenge becomes more complex: people disagree about activities and costs; invitations and responsibilities must be managed; decisions need a clear record; and the itinerary must evolve without losing shared context. AI-generated recommendations also need grounding in relevant travel knowledge instead of relying exclusively on generic responses.
 
-### Main problems addressed
+### Who faces this problem?
 
--   Fragmented trip research and planning.
--   Time-consuming day-by-day itinerary creation.
--   Coordination between multiple travellers.
--   Shared visibility into proposals, decisions, expenses, and trip
-    messages.
--   Keeping checklists, journal entries, and trip information together.
--   Accessing practical weather, currency, place, map, and route
-    information.
--   Searching ingested knowledge documents and retrieving relevant
-    content.
+| Stakeholder | Difficulty | TripWeaver's approach |
+|---|---|---|
+| Solo traveller | Too many research and planning steps | Natural-language itinerary generation and saved trips |
+| Friends and families | Conflicting choices and scattered communication | Group workspace, proposals, voting, chat, decisions |
+| Budget-conscious traveller | Hard to estimate and divide spending | Budget-oriented agent, expenses, summaries, currency tools |
+| Trip organizer | Manual coordination and follow-up | Invitations, members, checklist, notifications |
+| Information seeker | Unstructured, difficult-to-retrieve travel information | RAG-based knowledge ingestion and question answering |
 
 ## 2. Proposed Solution
 
-PACK & GO is a full-stack web application with a React/Vite frontend and
-FastAPI backend. The backend exposes REST APIs, coordinates AI planning
-workflows, persists application data in MongoDB, integrates Supabase
-authentication, and provides a RAG pipeline backed by vector storage.
+**Grevix AI TripWeaver** is a full-stack travel platform combining a React web application, FastAPI APIs, specialized AI planning agents, a document-grounded retrieval pipeline, and collaboration services. A user describes the destination, duration, interests, group size, and budget; the planning workflow coordinates research, weather, itinerary construction, budget estimation, and critique. The resulting trip can be saved, reviewed, revised, and shared.
 
-The intended user journey is: describe a trip, review an AI-generated
-itinerary, save and organize it, collaborate with travel companions, and
-use trip utilities and knowledge features as needed.
+**Design principles:** personalization over generic itineraries; collaboration rather than isolated planning; explicit budgets and constraints; persistent trip records; modular AI agents; source-grounded knowledge; secure user-scoped access.
 
-## 3. Goals and Scope
+### Objectives and success criteria
 
-### In scope
+| Objective | Expected outcome / acceptance criterion |
+|---|---|
+| Reduce manual itinerary planning | Accept a travel request and produce structured itinerary output |
+| Respect traveller constraints | Capture budget, duration, interests, and relevant preferences |
+| Support group decisions | Authorized members can propose options and record votes/decisions |
+| Maintain continuity | Users can retrieve, update, and manage saved trips |
+| Improve information access | Uploaded knowledge can be chunked, indexed, and queried with source context |
+| Enable practical execution | Weather, place lookup, currency, packing, routes, and expense workflows are accessible through the app/API |
 
--   Natural-language trip planning with normal and streaming endpoints.
--   Trip creation, listing, retrieval, update, deletion, and day
-    regeneration.
--   User profile and preference management.
--   Group trips, invitations, membership, workspace, messages,
-    proposals, votes, and decisions.
--   Expense tracking and summaries.
--   Travel journal entries and statistics.
--   Checklists and notifications.
--   Weather, currency, places, maps, packing lists, and route
-    optimization.
--   Constraint-based and genetic-algorithm itinerary optimization.
--   Knowledge document ingestion, re-indexing, retrieval, and question
-    answering.
--   Supabase authentication integration and role/access checks.
--   Vercel frontend and Render-compatible backend deployment.
+## 3. Project Scope and Functional Requirements
 
-> The API and code structure describe intended functionality. Not every
-> feature has been verified against live services. Consult the
-> verification section before claiming production readiness.
+The following requirements describe the intended product and the corresponding modules present in the repository. **Module presence does not guarantee a working end-to-end deployment.** See [Implementation and verification](#21-verification-status-and-known-limitations).
 
-## 4. Features
+| ID | Functional requirement | Relevant modules / interfaces |
+|---|---|---|
+| FR-01 | Register, sign in, and manage authenticated sessions | `frontend/src/pages/AuthPage.jsx`, `frontend/src/auth/`, `api/v1/users.py` |
+| FR-02 | Manage profile and travel preferences | `ProfilePage.jsx`, `PreferencesPage.jsx`, user API |
+| FR-03 | Generate an itinerary from natural language | `PlannerPage.jsx`, `agent/`, `/plan` |
+| FR-04 | Stream planning progress/results | `agent/agentic_workflow.py`, `/plan/stream`, `AgentTimeline.jsx` |
+| FR-05 | Create, view, edit, delete, and regenerate trips | `TripsPage.jsx`, `TripDetailPage.jsx`, `api/v1/trips.py` |
+| FR-06 | Research destinations and places | `ExplorePage.jsx`, `TravelGuidePage.jsx`, place search tools |
+| FR-07 | Optimize day plans against constraints | `services/itinerary_csp.py`, `services/itinerary_ga.py` |
+| FR-08 | Optimize visit order/route | `services/route_optimization.py` |
+| FR-09 | Create group trips and manage members | `api/v1/collaboration.py`, `GroupMembers.jsx` |
+| FR-10 | Invite participants and accept invitations | `GroupInvitations.jsx`, `InvitationAcceptPage.jsx` |
+| FR-11 | Propose activities, vote, and finalize decisions | `GroupProposals.jsx`, `GroupDecisions.jsx` |
+| FR-12 | Communicate and coordinate tasks | `GroupChat.jsx`, `GroupChecklist.jsx`, `GroupNotifications.jsx` |
+| FR-13 | Record expenses and view summaries | `ExpenseManager.jsx`, `api/v1/expenses.py` |
+| FR-14 | Record trip memories and journal statistics | `TripJournal.jsx`, `api/v1/journal.py` |
+| FR-15 | Use weather, currency, places, packing, and route tools | `TripUtilities.jsx`, `api/v1/utilities.py` |
+| FR-16 | Upload, index, and query travel documents | `KnowledgeCenterPage.jsx`, `rag/`, `api/v1/knowledge.py` |
+| FR-17 | Provide restricted administration functions | `AdminDashboardPage.jsx`, `api/v1/admin.py` |
 
-### AI trip planning
+### Non-functional requirements
 
--   Accepts a natural-language planning request.
--   Uses agent/workflow modules to build a plan.
--   `POST /plan` provides synchronous planning.
--   `POST /plan/stream` provides streaming planning.
--   Persists plans through the trip service and returns a saved trip
-    identifier.
--   Includes CSP-style and genetic-algorithm itinerary optimization
-    routes.
+| ID | Requirement | Design consideration |
+|---|---|---|
+| NFR-01 | Security | Token-based authentication, authorization checks, protected routes, secrets outside Git |
+| NFR-02 | Maintainability | Separate frontend, API, services, agents, tools, and data access |
+| NFR-03 | Reliability | Validation, error handling, retries where implemented, automated tests |
+| NFR-04 | Responsiveness | React UI and streaming support for long-running planning |
+| NFR-05 | Extensibility | Replaceable providers and modular planning agents |
+| NFR-06 | Data integrity | Persistent models, migrations, ownership and transaction tests |
+| NFR-07 | Observability | Logging and explicit health/error checks; further improvements planned |
 
-### Trip management
+## 4. Actors, Roles, and Access
 
--   Create, list, retrieve, update, and delete trips.
--   Regenerate an itinerary day.
--   Associate trips with an authenticated user or authorized group.
--   Retrieve saved trip data, subject to working database connectivity.
+- **Visitor:** views public landing/explore experiences and navigates to authentication.
+- **Authenticated traveller:** edits preferences, generates plans, manages owned trips, and uses trip utilities.
+- **Trip owner/organizer:** configures a group trip, invites others, and manages membership and decisions subject to server-side authorization.
+- **Group member:** accesses shared trip information and participates in permitted discussions, proposals, votes, and tasks.
+- **Administrator:** accesses restricted overview and knowledge administration endpoints.
+- **External systems:** AI model providers, place/weather/currency services, Supabase, application databases, and vector storage.
 
-### User profile and preferences
+### Use-case diagram
 
--   Retrieve the current user profile.
--   Read and update planning preferences.
--   Use Supabase identity/session integration for protected requests.
-
-### Group travel and collaboration
-
--   Convert a trip into a group trip.
--   Retrieve a workspace and member list.
--   Update roles, remove members, leave a group, or transfer ownership.
--   Create, list, preview, accept, and revoke invitations.
--   Create proposals, vote, view results, finalize decisions, and
-    apply/replan from decisions.
--   Send, retrieve, update, and delete messages.
--   Retrieve and manage notifications and unread counts.
-
-Invitation and collaboration workflows require a running backend,
-reachable database, valid authentication, and appropriate permissions.
-
-### Expenses, journal, and checklists
-
--   Create/list/update/delete expenses and view summaries.
--   Create/list/update/delete journal entries and view journal
-    statistics.
--   Add, update, complete, reopen, and delete checklist items.
--   Retrieve packing-list data for a trip.
-
-### Travel utilities
-
--   Weather lookup.
--   Currency conversion.
--   Place search.
--   Trip map and route-location retrieval.
--   Route optimization.
--   Itinerary optimization using CSP and GA approaches.
-
-Provider availability depends on environment configuration, API keys,
-rate limits, and network access.
-
-### RAG knowledge features
-
--   Admin document upload, listing, detail, deletion, and re-indexing.
--   User-facing knowledge source listing and question answering.
--   Document ingestion and chunking, embeddings, vector search, and
-    source metadata.
--   ChromaDB-backed vector collections, depending on configured storage.
-
-RAG results depend on actual ingested documents, embedding
-configuration, collection consistency, and durable vector storage.
-
-### Admin
-
--   Admin overview/analytics endpoint.
--   Administrative knowledge-document operations.
--   Administrative endpoints must remain restricted to authorized users.
-
-## 5. Architecture
-
-``` text
-Browser
-  |
-  v
-React + Vite frontend (Vercel)
-  | HTTPS / JSON / session token
-  v
-FastAPI backend (Render-compatible)
-  |-- API routers and Pydantic schemas
-  |-- Services and business logic
-  |-- AI agents / LangGraph workflows
-  |-- Trip, collaboration, journal, expense, utility APIs
-  |
-  +--> MongoDB Atlas: trips, preferences, collaboration data,
-  |                   and knowledge-source metadata
-  |
-  +--> Supabase: authentication and session identity
-  |
-  +--> External providers: LLMs, search, weather, currency, places
-  |
-  +--> RAG pipeline: document ingestion -> embeddings/vector store
-                    -> retrieval -> answer generation
+```mermaid
+flowchart LR
+  V[Visitor] --> A[Sign up / Sign in]
+  U[Authenticated traveller] --> P[Manage profile and preferences]
+  U --> G[Generate AI itinerary]
+  U --> T[Save and manage trips]
+  U --> K[Ask travel knowledge questions]
+  U --> X[Use travel utilities]
+  O[Trip organizer] --> I[Invite members]
+  O --> M[Manage group]
+  MBR[Group member] --> C[Chat and checklist]
+  MBR --> D[Propose and vote]
+  MBR --> E[Track expenses]
+  AD[Administrator] --> N[Knowledge source administration]
+  AD --> R[Admin overview]
 ```
 
-  -----------------------------------------------------------------------
-  Component                           Responsibility
-  ----------------------------------- -----------------------------------
-  React frontend                      UI, routing, forms, workspace
-                                      views, API calls
+## 5. Website Pages and Detailed Feature Specification
 
-  Vite                                Development server and production
-                                      build
+### 5.1 Landing page — `LandingPage.jsx`
 
-  FastAPI                             HTTP routes, request validation,
-                                      dependency injection, OpenAPI docs
+**Purpose:** introduce the product, explain the planning value proposition, and direct visitors toward exploring destinations or starting a plan. The interface includes a hero section, navigation, and footer components. **User path:** land on the homepage → understand the platform → sign in or proceed to available discovery/planning pages.
 
-  Pydantic models                     Request/response validation
+### 5.2 Authentication and password recovery — `AuthPage.jsx`, `ForgotPasswordPage.jsx`
 
-  Services                            Business logic and persistence
-                                      orchestration
+**Purpose:** create a user identity and maintain authenticated access. Supabase client/session logic lives under `frontend/src/auth/`. The API client attaches the appropriate session token for protected calls. Protected routes gate private pages, while backend checks remain authoritative. Password recovery has a dedicated UI. **Dependencies:** correctly configured Supabase URL and public anon key, valid callback settings, and backend token verification.
 
-  Agent workflows                     AI planning and tool coordination
+### 5.3 Profile and preferences — `ProfilePage.jsx`, `PreferencesPage.jsx`
 
-  MongoDB Atlas                       Application persistence and source
-                                      metadata
+**Purpose:** store user details and reusable travel choices rather than repeating them in every request. Preference data is designed to inform personalization. The backend exposes user/profile/preferences operations; the frontend provides corresponding screens. **Typical flow:** authenticate → open profile/preferences → review or edit → save → reuse on subsequent planning requests.
 
-  Supabase                            Authentication/session identity
+### 5.4 AI planner — `PlannerPage.jsx`
 
-  ChromaDB                            Vector retrieval for RAG, subject
-                                      to persistence configuration
+**Purpose:** turn a natural-language travel request into a structured travel plan. The user supplies trip intent such as destination, dates or duration, budget, interests, travel style, and companions. The frontend sends the request to the FastAPI planning endpoint. The multi-agent backend coordinates specialized responsibilities and produces itinerary output, with a streaming path for progress updates. Components include `ChatInput`, `MessageBubble`, `AgentTimeline`, `PlanCard`, `DayCard`, and `CriticScore`.
 
-  External APIs                       AI generation, web search, weather,
-                                      currency, place data
+**Expected itinerary elements:** destination context, day-wise activities, visit sequencing, estimated cost considerations, relevant weather/places, and reviewable recommendations. Exact response fields depend on the active Pydantic schema and agent output.
 
-  Vercel                              Frontend hosting
+**User flow:** enter request → submit → agents research/compose/check → inspect generated days and costs → save or revise trip → open saved trip. Failure conditions include missing LLM/provider credentials, external API rate limits, malformed model responses, or unavailable persistence.
 
-  Render                              Backend hosting
-  -----------------------------------------------------------------------
+### 5.5 Explore and travel guide — `ExplorePage.jsx`, `TravelGuidePage.jsx`
 
-## 6. Technology Stack
+**Purpose:** help users discover destinations and contextual travel information. Place-search tools support relevant discovery. The guide view is intended to bring travel guidance into a single interface. External search results and map links depend on configured providers; a fully embedded map is **not guaranteed** by the current code.
 
-  -----------------------------------------------------------------------
-  Area                                Technology
-  ----------------------------------- -----------------------------------
-  Frontend                            React, JavaScript/JSX, Vite, React
-                                      Router
+### 5.6 Saved trips and trip detail — `TripsPage.jsx`, `TripDetailPage.jsx`
 
-  Styling                             Tailwind CSS and project UI styles
+**Purpose:** provide continuity between planning sessions. The trip service and trip API support listing, creating, retrieving, updating, and deleting trip records, plus itinerary-day revision. Trip detail acts as the hub for itinerary review, group collaboration, expenses, journal, and utilities. **Access rule:** the backend should enforce ownership or authorized membership, not rely solely on hidden frontend buttons.
 
-  Backend                             Python, FastAPI, Uvicorn
+### 5.7 Group workspace — `GroupOverview.jsx`, `GroupMembers.jsx`
 
-  Schemas                             Pydantic
+**Purpose:** transform an individual itinerary into a coordinated group experience. The workspace provides shared trip context and membership management. Supported backend concepts include group activation, members, roles, ownership transfer, leaving/removing members, and permission checks. Owner/member actions must be authorized server-side.
 
-  Application database                MongoDB / MongoDB Atlas
+### 5.8 Invitations — `GroupInvitations.jsx`, `InvitationAcceptPage.jsx`
 
-  Authentication                      Supabase Auth
+**Purpose:** let the organizer invite companions without manually copying plans between applications. Invitation APIs support creation, listing, preview, acceptance, and revocation; the repository also contains migration support for link invitations. **Flow:** organizer creates invite → recipient opens link → signs in if needed → backend validates invitation and permissions → membership is recorded → group workspace becomes accessible. Expired/revoked/invalid invitations should produce an explicit error state.
 
-  AI workflow orchestration           LangGraph and project agent modules
+### 5.9 Proposals, voting, and decisions — `GroupProposals.jsx`, `GroupDecisions.jsx`
 
-  Vector store                        ChromaDB
+**Purpose:** resolve disagreements transparently. Members can propose itinerary options, vote, review results, and finalize a decision according to permitted roles. The backend contains decision snapshots and related schema migrations. A finalized decision may be applied to the trip/replanning workflow. **Value:** avoids losing group consensus inside informal chats.
 
-  AI provider integrations            Groq and Google API integrations,
-                                      depending on workflow
+### 5.10 Group chat, checklist, and notifications
 
-  Search                              Tavily
+`GroupChat.jsx` provides shared conversation; `GroupChecklist.jsx` tracks preparation tasks and completion state; `GroupNotifications.jsx` surfaces updates and unread items. Together these support day-to-day coordination: discuss an option, assign/complete preparation items, and see changes without switching apps. Data consistency and access control depend on the collaboration API and database.
 
-  Weather                             OpenWeatherMap
+### 5.11 Expense manager — `ExpenseManager.jsx`
 
-  Currency                            Exchange-rate API integration
+**Purpose:** record trip spending and make costs visible to the group. Expense services/API cover create, list, update, delete, and summary operations. The feature is intended for budget awareness and shared visibility; **do not assume automatic bank integrations or payment settlement**, which are not established by the supplied code overview.
 
-  Tests                               pytest, frontend test scripts,
-                                      lint, production build
+### 5.12 Travel journal — `TripJournal.jsx`
 
-  Frontend hosting                    Vercel
+**Purpose:** preserve trip experiences alongside the itinerary. The journal API and service support journal entries, edits/deletion, and statistics. Journal content belongs to the trip context and must be subject to appropriate authorization.
 
-  Backend hosting                     Render
-  -----------------------------------------------------------------------
+### 5.13 Travel utilities — `TripUtilities.jsx`
 
-Use `requirements.txt`, `pyproject.toml`, and `frontend/package.json` as
-the source of truth for installed versions.
+Utilities include weather lookup, currency conversion, place search, route-related data, packing lists, and route optimization. These are assistance tools rather than guaranteed live booking integrations. The project has tools under `tools/`, implementations under `utils/`, and API endpoints under `api/v1/utilities.py`. Provider-backed results can be limited by credentials, coverage, freshness, and quota.
 
-## 7. Repository Structure
+### 5.14 Knowledge center and RAG — `KnowledgeCenterPage.jsx`
 
-This is a functional overview of the main directories observed in the
-project. It is not a replacement for the exact file tree in the current
-branch.
+**Purpose:** answer questions using indexed travel documents rather than relying on a model's general memory alone. The repository contains modules for ingestion, chunking, embeddings, vector storage, retrieval, and answer generation, plus evaluation utilities and citation tests. Administrative ingestion and user-facing question answering are separate responsibilities. **Prerequisite:** documents must actually be indexed into a working collection; empty/unavailable vector storage cannot provide grounded answers.
 
-``` text
-Pack-Go/
-â”œâ”€â”€ agent/                        # AI agents and planning workflows
-â”œâ”€â”€ api/
-â”‚   â””â”€â”€ v1/
-â”‚       â”œâ”€â”€ trips.py              # Trip API
-â”‚       â”œâ”€â”€ users.py              # Profile and preference API
-â”‚       â”œâ”€â”€ collaboration.py      # Groups, invitations, messages, proposals,
-â”‚       â”‚                         # decisions, checklists, notifications
-â”‚       â”œâ”€â”€ knowledge.py          # User knowledge/RAG endpoints
-â”‚       â””â”€â”€ ...                   # Expenses, journal, utilities, admin, etc.
-â”œâ”€â”€ config/                       # App configuration
-â”œâ”€â”€ database/
-â”‚   â”œâ”€â”€ mongodb.py                # MongoDB client/database access
-â”‚   â””â”€â”€ ...                       # Other database helpers
-â”œâ”€â”€ exception/                    # Application exceptions
-â”œâ”€â”€ evaluation/                   # Evaluation utilities
-â”œâ”€â”€ logger/                       # Logging setup
-â”œâ”€â”€ memory/                       # Agent/session memory helpers
-â”œâ”€â”€ models/                       # Domain, request, and response schemas
-â”œâ”€â”€ prompt_library/               # Prompt templates/instructions
-â”œâ”€â”€ rag/
-â”‚   â”œâ”€â”€ ingestion.py              # Knowledge ingestion
-â”‚   â”œâ”€â”€ vector_store.py           # Vector-store setup/access
-â”‚   â”œâ”€â”€ retrieval.py               # Retrieval logic
-â”‚   â””â”€â”€ ...                       # Additional RAG modules
-â”œâ”€â”€ scripts/                      # Utility/maintenance scripts
-â”œâ”€â”€ services/
-â”‚   â”œâ”€â”€ trip_service.py           # Trip persistence/business logic
-â”‚   â”œâ”€â”€ collaboration_service.py  # Collaboration operations
-â”‚   â”œâ”€â”€ expense_service.py        # Expense logic
-â”‚   â”œâ”€â”€ journal_service.py        # Journal logic
-â”‚   â”œâ”€â”€ itinerary_csp.py          # Constraint-based optimization
-â”‚   â”œâ”€â”€ itinerary_ga.py           # Genetic-algorithm optimization
-â”‚   â”œâ”€â”€ route_optimization.py     # Route optimization
-â”‚   â”œâ”€â”€ travel_utility_service.py # Travel utilities
-â”‚   â””â”€â”€ ...                       # Other services
-â”œâ”€â”€ tests/                        # Backend pytest suite
-â”œâ”€â”€ tools/                        # Agent tools and integrations
-â”œâ”€â”€ utils/                        # Shared helpers
-â”œâ”€â”€ frontend/
-â”‚   â”œâ”€â”€ src/
-â”‚   â”‚   â”œâ”€â”€ auth/                 # Supabase/auth client and context
-â”‚   â”‚   â”œâ”€â”€ api/                  # Frontend API client
-â”‚   â”‚   â””â”€â”€ ...                   # Pages, components, routes
-â”‚   â”œâ”€â”€ tests/                    # Frontend tests
-â”‚   â”œâ”€â”€ package.json              # Frontend dependencies/scripts
-â”‚   â”œâ”€â”€ vite.config.js            # Vite config and env loading
-â”‚   â””â”€â”€ vercel.json               # SPA fallback for client-side routes
-â”œâ”€â”€ main.py                       # FastAPI entry point
-â”œâ”€â”€ streamlit_app.py              # Streamlit entry point, if used
-â”œâ”€â”€ requirements.txt              # Python dependencies
-â”œâ”€â”€ pyproject.toml                # Python/tool configuration
-â”œâ”€â”€ alembic.ini                   # Legacy migration configuration; verify current usage
-â””â”€â”€ .gitignore                    # Secret and generated-file exclusions
+### 5.15 Admin dashboard — `AdminDashboardPage.jsx`
+
+**Purpose:** provide restricted operational oversight. The backend includes admin analytics and knowledge-source management. Administrative privileges must be verified by the server. Dashboard metrics are dependent on real database records and should not be presented as verified live analytics until tested.
+
+## 6. AI System Design: Multi-Agent Planning
+
+The repository separates the planning workflow into agents with distinct responsibilities:
+
+| Agent/module | Responsibility |
+|---|---|
+| `supervisor.py` | Coordinates planning intent and agent execution |
+| `preference_extractor.py` | Extracts useful user preferences/constraints from the request |
+| `research_agent.py` | Collects destination and activity context using available tools |
+| `weather_agent.py` | Incorporates weather context where provider data is available |
+| `itinerary_agent.py` | Assembles structured day-by-day travel suggestions |
+| `budget_agent.py` | Evaluates costs and budget fit |
+| `critic_agent.py` | Reviews output quality and constraints |
+| `knowledge_agent.py` | Connects planning/question answering to available knowledge |
+| `chat_agent.py` | Supports conversational planning interactions |
+| `agentic_workflow.py` | Wires agent execution and workflow state |
+
+### Planning workflow
+
+```mermaid
+flowchart TD
+  A[Traveller describes trip] --> B[React planner / API client]
+  B --> C[FastAPI planning endpoint]
+  C --> D[Supervisor and preference extraction]
+  D --> E[Research agent]
+  D --> F[Weather agent]
+  E --> G[Itinerary agent]
+  F --> G
+  G --> H[Budget agent]
+  H --> I[Critic / validation]
+  I --> J{Acceptable plan?}
+  J -->|Revise when supported| G
+  J -->|Return result| K[Structured itinerary]
+  K --> L[React plan and day cards]
+  L --> M[Save / revise trip]
+  M --> N[Trip persistence layer]
 ```
 
-`main.py` mounts the FastAPI application and routes. `api/v1/` contains
-HTTP contracts, `services/` contains business logic, `models/` contains
-schemas, `rag/` contains retrieval code, and `frontend/` is the Vercel
-project root. Legacy files may remain from earlier architecture
-iterations; confirm their usage before removing them.
+This diagram represents the **conceptual responsibilities and target workflow**, not a claim that every branch or feedback loop is exercised in the current deployment.
 
-## 8. Main Workflows
+### Planning and optimization algorithms
 
-### Generate and save a trip
+**Constraint Satisfaction (CSP):** `services/itinerary_csp.py` contains constraint-based itinerary logic intended to satisfy limits such as feasible activity choices, timing, and plan restrictions. **Genetic Algorithm (GA):** `services/itinerary_ga.py` provides an optimization approach using candidate itineraries and iterative search. **Route optimization:** `services/route_optimization.py` handles ordering/route-related optimization. The repository contains dedicated unit/API tests for all three areas. Their exact constraints, objective functions, and production outcomes should be checked against those modules before making benchmark claims.
 
-1.  User submits a planning request.
-2.  Frontend calls `POST /plan` or `POST /plan/stream`.
-3.  FastAPI validates the request.
-4.  Agent/workflow modules produce the plan.
-5.  The result is validated and persisted by the trip service.
-6.  The API returns the plan and saved trip identifier.
-7.  The frontend retrieves the trip using the trip APIs.
+## 7. Retrieval-Augmented Generation (RAG) Architecture
 
-A plan response alone is not proof of persistence; read the saved trip
-back to verify.
+```mermaid
+flowchart LR
+  A[Knowledge document] --> B[Ingestion]
+  B --> C[Text extraction and chunking]
+  C --> D[Embedding generation]
+  D --> E[(ChromaDB vector collection)]
+  Q[Traveller question] --> R[Query embedding]
+  R --> S[Similarity retrieval]
+  E --> S
+  S --> T[Relevant chunks and source metadata]
+  T --> U[Grounded answer generation]
+  Q --> U
+  U --> V[Answer and available citations]
+```
 
-### Authentication and protected requests
+**Ingestion path:** validate source → extract content → split into chunks → embed chunks → store vectors and source metadata. **Query path:** embed the question → retrieve similar chunks → assemble context → generate an answer → return citation/source information when supported. Relevant implementation files: `rag/ingestion.py`, `chunking.py`, `embeddings.py`, `vector_store.py`, `retrieval.py`, `generation.py`, and `api/v1/knowledge.py`.
 
-1.  User signs in through Supabase.
-2.  Frontend obtains the session/access token.
-3.  API client forwards the token with protected requests.
-4.  Backend validates the token using its configured Supabase auth path.
-5.  Services enforce ownership and group membership.
+**Limitations:** answers depend on ingested documents, retrieval relevance, provider access, and persistent vector storage. A local ChromaDB directory is not automatically durable on ephemeral cloud hosting.
 
-A user-supplied ID alone must never be treated as proof of
-authorization.
+## 8. Overall System Architecture
 
-### Invitation workflow
+```mermaid
+flowchart TB
+  subgraph Client[Frontend: React + Vite]
+    UI[Pages, forms and trip workspace]
+    AuthUI[Supabase auth client]
+    APIClient[HTTP / SSE API client]
+  end
+  subgraph Server[Backend: FastAPI]
+    Routes[Versioned API routers and planning endpoints]
+    Services[Trip, collaboration, expense, journal, utility services]
+    Agents[LangGraph / multi-agent planning]
+    RAG[RAG ingestion, retrieval and generation]
+  end
+  subgraph Storage[Storage and identity]
+    SQL[(SQLAlchemy models / Alembic migrations)]
+    Mongo[(MongoDB integration)]
+    Vector[(ChromaDB vector store)]
+    Supabase[Supabase authentication]
+  end
+  Providers[LLM, weather, search, currency and places providers]
+  UI --> APIClient --> Routes
+  AuthUI --> Supabase
+  Routes --> Services
+  Routes --> Agents
+  Routes --> RAG
+  Services --> SQL
+  Services -.-> Mongo
+  RAG --> Vector
+  Agents --> Providers
+  Services --> Providers
+```
 
-1.  Authorized member creates an invitation.
-2.  Recipient opens the frontend invitation route.
-3.  Frontend requests invitation preview from the backend.
-4.  Recipient authenticates if required and accepts.
-5.  Backend validates the token and updates membership.
-6.  Authorized member can access the group workspace.
+**Persistence clarification:** this repository contains both relational persistence (`database/connection.py`, `database/models.py`, Alembic migrations; local SQLite fallback) and a MongoDB module (`database/mongodb.py`). MongoDB integration and migration documents exist, but a fully completed MongoDB-only migration is **not verified**. The architecture deliberately shows both rather than claiming a single fully operational datastore.
 
-A page returning HTML proves only SPA route delivery, not successful
-invitation acceptance.
+### Layer responsibilities
 
-### RAG workflow
+| Layer | Main responsibilities | Code location |
+|---|---|---|
+| Presentation | Page navigation, forms, trip cards, group workspace, status messages | `frontend/src/` |
+| API | Request parsing, auth dependencies, response schemas, routing | `main.py`, `api/v1/`, `models/` |
+| Domain services | Trip persistence, group decisions, expenses, journals, utilities | `services/` |
+| Intelligence | Agent orchestration, prompts, tools, itinerary optimization | `agent/`, `prompt_library/`, `tools/` |
+| Knowledge | Document ingestion, embeddings, vector retrieval, generation | `rag/`, `evaluation/` |
+| Persistence | Database connection, data models, migrations, Mongo integration | `database/`, `alembic/` |
+| Testing | Backend and frontend tests | `tests/`, `frontend/tests/` |
 
-1.  Authorized user uploads a document.
-2.  Ingestion extracts and chunks content.
-3.  Embeddings are generated using configured providers.
-4.  Vectors are written to the configured vector collection.
-5.  Source metadata is stored in the application database.
-6.  A question triggers retrieval and answer generation.
-7.  The UI presents source information when returned by the API.
+## 9. Core Process Flowcharts
 
-Production reliability requires vector storage and metadata to persist
-across restarts and redeployments.
+### 9.1 End-to-end user journey
 
-## 9. Local Setup
+```mermaid
+flowchart TD
+  Start([Open TripWeaver]) --> Auth{Signed in?}
+  Auth -->|No| Login[Register or sign in]
+  Login --> Profile[Set profile and preferences]
+  Auth -->|Yes| Profile
+  Profile --> Plan[Describe trip requirements]
+  Plan --> Generate[Generate and review itinerary]
+  Generate --> Save[Save trip]
+  Save --> Group{Travelling with others?}
+  Group -->|Yes| Invite[Invite members and collaborate]
+  Invite --> Decide[Discuss, vote, and finalize]
+  Group -->|No| Tools[Use trip utilities]
+  Decide --> Tools
+  Tools --> Track[Expenses, checklist, journal]
+  Track --> End([Manage trip throughout journey])
+```
+
+### 9.2 Group decision lifecycle
+
+```mermaid
+flowchart TD
+  A[Owner enables group workspace] --> B[Create invitation]
+  B --> C[Recipient accepts]
+  C --> D[Authorized group member]
+  D --> E[Submit proposal]
+  E --> F[Members review and vote]
+  F --> G[Finalize decision with permissions]
+  G --> H[Apply decision / revise itinerary where supported]
+  H --> I[Updated shared trip context]
+```
+
+### 9.3 Sequence diagram: itinerary generation
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Web as React Planner
+  participant API as FastAPI
+  participant AI as Agent Workflow
+  participant Tools as External Tools
+  participant DB as Trip Service / DB
+  User->>Web: Enter destination, budget, interests, duration
+  Web->>API: POST planning request
+  API->>AI: Parse and coordinate planning
+  AI->>Tools: Request destination/weather context
+  Tools-->>AI: Available results
+  AI-->>API: Structured itinerary / progress
+  API-->>Web: Plan response or stream
+  Web-->>User: Show itinerary and cost details
+  User->>Web: Save trip
+  Web->>API: Save request
+  API->>DB: Persist trip for authorized user
+  DB-->>API: Trip identifier / result
+  API-->>Web: Saved trip response
+```
+
+## 10. Data Model and Relationships
+
+The relational schema and migrations include these domain entities: users, trips, group members, invitations, proposals, decisions, checklist items, messages, notifications, expenses, journal entries, and knowledge sources. The diagram below is a **high-level logical model**, not an exact foreign-key export.
+
+```mermaid
+erDiagram
+  USER ||--o{ TRIP : owns
+  TRIP ||--o{ TRIP_MEMBER : has
+  USER ||--o{ TRIP_MEMBER : joins
+  TRIP ||--o{ INVITATION : invites
+  TRIP ||--o{ PROPOSAL : considers
+  PROPOSAL ||--o{ DECISION : informs
+  TRIP ||--o{ CHECKLIST_ITEM : contains
+  TRIP ||--o{ MESSAGE : contains
+  TRIP ||--o{ EXPENSE : tracks
+  TRIP ||--o{ JOURNAL_ENTRY : records
+  USER ||--o{ NOTIFICATION : receives
+```
+
+**Data ownership:** private trips are associated with an authenticated identity; group data must be checked against membership and role permissions. **Lifecycle:** create trip → optionally activate group → invite members → coordinate proposals/tasks → track expenses and journal → update or delete according to permissions. **Schema evolution:** migration scripts live in `alembic/versions/`; MongoDB mapping notes live in `docs/MONGODB_MIGRATION_MAPPING.md`.
+
+## 11. Technology Stack
+
+| Concern | Technology / approach |
+|---|---|
+| Frontend | React, Vite, React Router, JavaScript/JSX, CSS |
+| Backend | Python, FastAPI, Pydantic, Uvicorn |
+| AI orchestration | LangGraph/LangChain-style agents and tool calling |
+| Retrieval | ChromaDB, embeddings, chunking, retrieval, RAG generation |
+| Identity | Supabase authentication |
+| Relational data | SQLAlchemy, Alembic, SQLite fallback / configured database |
+| Additional data integration | MongoDB driver/integration module; connectivity to verify |
+| Travel information | External LLM, search, weather, currency, and place APIs |
+| Quality | Pytest, frontend Node test scripts, production build checks |
+| Deployment targets | Vercel-compatible frontend, Render-compatible FastAPI backend |
+
+## 12. Repository Structure
+
+```text
+Grevix_AITripWeaver/
+├── agent/              # Supervisor, research, weather, itinerary, budget, critic, chat
+├── api/v1/             # Users, trips, collaboration, expenses, journal, knowledge, utilities, admin
+├── config/             # Application configuration
+├── database/           # Database connection, relational models, MongoDB integration
+├── alembic/            # Schema migrations
+├── docs/               # RAG, optimization, group architecture, deployment audits
+├── evaluation/         # RAG evaluation cases, metrics, runners
+├── frontend/
+│   ├── src/pages/      # Landing, auth, planner, trips, profile, guide, admin, knowledge
+│   ├── src/components/ # Plan cards, utilities, expenses, journal, group workspace
+│   ├── src/auth/       # Supabase client and auth context
+│   └── tests/          # Frontend unit tests
+├── memory/             # Short/long-term agent memory modules
+├── models/             # API and agent schemas
+├── prompt_library/     # Prompt templates for specialized agents
+├── rag/                # Ingestion, chunking, embeddings, vector store, retrieval
+├── services/           # Domain services, CSP/GA, route optimization
+├── tests/              # Backend and integration-oriented tests
+├── tools/              # Search, weather, currency, arithmetic and expense tools
+├── utils/              # Shared helpers and streaming
+├── main.py             # FastAPI application entry point
+├── requirements.txt
+└── README.md
+```
+
+## 13. API Design and Integration
+
+**Base local API:** `http://127.0.0.1:8000`. **Interactive documentation:** `/docs` (when the backend is running). The backend contains planning endpoints such as `POST /plan` and `POST /plan/stream` plus versioned routers under `api/v1/` for trips, users, collaboration, expenses, journal, knowledge, utilities, and admin. The precise methods, parameters, and paths should be taken from the running OpenAPI schema rather than inferred from the frontend alone.
+
+**Request lifecycle:** browser → authenticated API client → FastAPI route → validation and permission dependency → domain service/agent → database or provider → serialized response → React UI. Streaming requests additionally require a correctly configured stream transport and frontend reader.
+
+---
+
+## 14. Local Setup
 
 ### Prerequisites
 
@@ -478,7 +459,7 @@ Configure the ignored root `.env` file with the required local settings.
 Use an example template only if one exists in the checked-out branch.
 Never commit `.env` or paste secrets into issues/chat.
 
-## 10. Environment Variables
+## 15. Environment Variables
 
 Variable requirements depend on the actual code paths enabled. Verify
 usage before renaming or deleting variables.
@@ -542,7 +523,7 @@ the actual frontend origin. - \[ \] Production secrets are configured in
 the backend host. - \[ \] Vercel build variables are configured
 independently from local `.env`.
 
-## 11. Run Locally
+## 16. Run Locally
 
 Run backend and frontend in separate terminals.
 
@@ -601,7 +582,7 @@ cluster status, DNS/network access, Atlas IP access rules, VPN/firewall
 restrictions, and then credentials once network connectivity is
 established. Never share the full connection string.
 
-## 12. API Overview
+## 17. API Overview
 
 Use the running API's OpenAPI schema as the source of truth:
 
@@ -656,23 +637,21 @@ Protected endpoints require valid authentication and appropriate
 ownership, membership, or administrator permissions. Consult `/docs` for
 exact schemas and request bodies.
 
-## 13. Deployment
+## 18. Deployment
 
 The intended arrangement is a Vercel frontend and a separately deployed
 FastAPI backend.
 
 ### Frontend --- Vercel
 
--   Original project deployment repository: `patilshrutika1803/Pack-Go`. Configure `patilshrutika1803/Grevix_AITripWeaver` separately if deploying the hackathon submission.
+-   **Repository to deploy:** `patilshrutika1803/Grevix_AITripWeaver`.
 -   **Root directory:** `frontend`
 -   **Build command:** `npm run build`
 -   **Output directory:** `dist`
--   **Frontend URL:** `https://pack-go-cyan.vercel.app`
 
 Steps: 1. Import the repository into Vercel. 2. Set root directory to
 `frontend`. 3. Configure the build command/output directory. 4. Set
 public frontend environment variables in Vercel. 5. Set
-`VITE_API_BASE_URL` to `https://pack-go.onrender.com` if required by the
 production API client. 6. Confirm `frontend/vercel.json` has the SPA
 rewrite for client-side routes. 7. Redeploy after changing build-time
 variables. 8. Test sign-in, protected pages, direct route navigation,
@@ -683,7 +662,6 @@ Never set the deployed frontend API base URL to `localhost` or
 
 ### Backend --- Render
 
--   Service URL: `https://pack-go.onrender.com`
 -   Repository root: directory containing `main.py`
 -   **Build command:**
 
@@ -751,7 +729,7 @@ any persistent-volume or hosted-vector-service requirement.
 -   [ ] Logs contain no credentials.
 -   [ ] Critical workflows are tested with safe accounts/data.
 
-## 14. Testing
+## 19. Testing
 
 ### Frontend
 
@@ -804,7 +782,7 @@ Report unit tests, mocked integration tests, and live external-service
 tests separately. A mock passing is not proof that production services
 work.
 
-## 15. Security
+## 20. Security
 
 -   Never commit `.env`, API keys, passwords, session tokens, database
     URIs, or service-role keys.
@@ -837,7 +815,7 @@ Adding a secret to `.gitignore` does not remove it from existing Git
 history. Rotate exposed credentials and remediate history safely if
 needed.
 
-## 16. Verification Status and Known Limitations
+## 21. Verification Status and Known Limitations
 
 The following status reflects checks actually performed during the current local setup on 11 Oct 2026. Update it whenever new checks are run.
 
@@ -874,7 +852,7 @@ The following status reflects checks actually performed during the current local
 Update this section when fresh test evidence is available. Do not carry
 old test totals forward after the suite changes.
 
-## 17. Troubleshooting
+## 22. Troubleshooting
 
 ### Frontend crashes on startup
 
@@ -923,55 +901,3 @@ retrieval configuration.
 
 Set `VITE_API_BASE_URL` to the deployed backend origin in Vercel and
 redeploy.
-
-## 18. Development Workflow
-
-1.  Inspect the current branch and working tree.
-2.  Read the implementation and related tests.
-3.  Define expected behavior and failure cases.
-4.  Make a focused change and add regression tests.
-5.  Run focused tests, then the relevant full suite.
-6.  Run lint/build or Python compilation as appropriate.
-7.  Review the diff and check for secrets.
-8.  Commit a scoped change.
-9.  Deploy only after review and environment checks.
-10. Verify the deployed workflow rather than relying on build success
-    alone.
-
-Example:
-
-``` bash
-git status
-git diff --check
-git diff
-git add <specific-files>
-git commit -m "fix: describe the change"
-git push origin main
-```
-
-Prefer staging specific files rather than blindly running `git add .`,
-especially when local environment files or generated files may exist.
-
-## 19. Future Improvements
-
--   Finish migrating legacy tests to the current MongoDB/Supabase
-    architecture.
--   Add stable integration tests using an isolated test database.
--   Add a documented health/readiness endpoint.
--   Improve structured logging without exposing secrets.
--   Add end-to-end browser tests for authentication, planning,
-    persistence, and invitations.
--   Use durable hosted vector storage or a persistent volume for
-    production RAG.
--   Add observability for external provider failures and rate limits.
--   Add CI for backend tests, frontend tests, lint, and production
-    build.
--   Document backups, recovery, and deployment rollback.
--   Improve frontend bundle splitting if bundle analysis shows it is
-    needed.
-
-## License
-
-Add the license selected by the project owner before public
-distribution. Until a license is included, do not assume the repository
-grants permission to reuse the code.
