@@ -1,903 +1,603 @@
-# Grevix AI TripWeaver
-### An AI-Powered Multi-Agent Travel Planner and Collaborative Trip Management Platform
+# PACK & GO — AI-Powered Smart Travel Planning Platform
 
-**Hackathon:** Grevix AfterCode · **Category:** AI / Full-Stack Web Application · **Repository:** [Grevix_AITripWeaver](https://github.com/patilshrutika1803/Grevix_AITripWeaver) · **Developer:** Shrutika Patil
+> **Grevix AfterCode | Problem Statement & Software Requirements Specification (SRS)**
 
-> **One platform to imagine, plan, optimize, coordinate, and remember a trip.**
+PACK & GO is an AI-powered travel planning platform designed to make trip planning more personalized, organized, and practical. Instead of relying on a single AI-generated itinerary, the platform combines itinerary generation with budget planning, weather information, maps, travel research, packing assistance, expense management, and contextual travel support.
 
-## 1. Problem Statement
+The system uses an AI-driven workflow to understand user preferences, research the destination, consider weather and budget constraints, generate an itinerary, and refine the plan based on user requirements. Retrieval-Augmented Generation (RAG) is used to provide context-aware travel assistance from relevant travel knowledge.
 
-**Self-selected hackathon problem statement:** *Design an intelligent, collaborative travel-planning platform that converts a traveller's natural-language goals into practical, budget-aware, personalized itineraries while centralizing group decisions, expenses, logistics, and trusted travel information.*
-
-Trip planning is typically fragmented. A traveller researches destinations in one tab, checks weather in another, estimates expenses manually, creates a day-by-day schedule in notes, and coordinates with friends through disconnected chats. This increases planning time and introduces conflicting preferences, duplicated effort, unrealistic schedules, and forgotten decisions.
-
-For group travel, the challenge becomes more complex: people disagree about activities and costs; invitations and responsibilities must be managed; decisions need a clear record; and the itinerary must evolve without losing shared context. AI-generated recommendations also need grounding in relevant travel knowledge instead of relying exclusively on generic responses.
-
-### Who faces this problem?
-
-| Stakeholder | Difficulty | TripWeaver's approach |
-|---|---|---|
-| Solo traveller | Too many research and planning steps | Natural-language itinerary generation and saved trips |
-| Friends and families | Conflicting choices and scattered communication | Group workspace, proposals, voting, chat, decisions |
-| Budget-conscious traveller | Hard to estimate and divide spending | Budget-oriented agent, expenses, summaries, currency tools |
-| Trip organizer | Manual coordination and follow-up | Invitations, members, checklist, notifications |
-| Information seeker | Unstructured, difficult-to-retrieve travel information | RAG-based knowledge ingestion and question answering |
-
-## 2. Proposed Solution
-
-**Grevix AI TripWeaver** is a full-stack travel platform combining a React web application, FastAPI APIs, specialized AI planning agents, a document-grounded retrieval pipeline, and collaboration services. A user describes the destination, duration, interests, group size, and budget; the planning workflow coordinates research, weather, itinerary construction, budget estimation, and critique. The resulting trip can be saved, reviewed, revised, and shared.
-
-**Design principles:** personalization over generic itineraries; collaboration rather than isolated planning; explicit budgets and constraints; persistent trip records; modular AI agents; source-grounded knowledge; secure user-scoped access.
-
-### Objectives and success criteria
-
-| Objective | Expected outcome / acceptance criterion |
-|---|---|
-| Reduce manual itinerary planning | Accept a travel request and produce structured itinerary output |
-| Respect traveller constraints | Capture budget, duration, interests, and relevant preferences |
-| Support group decisions | Authorized members can propose options and record votes/decisions |
-| Maintain continuity | Users can retrieve, update, and manage saved trips |
-| Improve information access | Uploaded knowledge can be chunked, indexed, and queried with source context |
-| Enable practical execution | Weather, place lookup, currency, packing, routes, and expense workflows are accessible through the app/API |
-
-## 3. Project Scope and Functional Requirements
-
-The following requirements describe the intended product and the corresponding modules present in the repository. **Module presence does not guarantee a working end-to-end deployment.** See [Implementation and verification](#21-verification-status-and-known-limitations).
-
-| ID | Functional requirement | Relevant modules / interfaces |
-|---|---|---|
-| FR-01 | Register, sign in, and manage authenticated sessions | `frontend/src/pages/AuthPage.jsx`, `frontend/src/auth/`, `api/v1/users.py` |
-| FR-02 | Manage profile and travel preferences | `ProfilePage.jsx`, `PreferencesPage.jsx`, user API |
-| FR-03 | Generate an itinerary from natural language | `PlannerPage.jsx`, `agent/`, `/plan` |
-| FR-04 | Stream planning progress/results | `agent/agentic_workflow.py`, `/plan/stream`, `AgentTimeline.jsx` |
-| FR-05 | Create, view, edit, delete, and regenerate trips | `TripsPage.jsx`, `TripDetailPage.jsx`, `api/v1/trips.py` |
-| FR-06 | Research destinations and places | `ExplorePage.jsx`, `TravelGuidePage.jsx`, place search tools |
-| FR-07 | Optimize day plans against constraints | `services/itinerary_csp.py`, `services/itinerary_ga.py` |
-| FR-08 | Optimize visit order/route | `services/route_optimization.py` |
-| FR-09 | Create group trips and manage members | `api/v1/collaboration.py`, `GroupMembers.jsx` |
-| FR-10 | Invite participants and accept invitations | `GroupInvitations.jsx`, `InvitationAcceptPage.jsx` |
-| FR-11 | Propose activities, vote, and finalize decisions | `GroupProposals.jsx`, `GroupDecisions.jsx` |
-| FR-12 | Communicate and coordinate tasks | `GroupChat.jsx`, `GroupChecklist.jsx`, `GroupNotifications.jsx` |
-| FR-13 | Record expenses and view summaries | `ExpenseManager.jsx`, `api/v1/expenses.py` |
-| FR-14 | Record trip memories and journal statistics | `TripJournal.jsx`, `api/v1/journal.py` |
-| FR-15 | Use weather, currency, places, packing, and route tools | `TripUtilities.jsx`, `api/v1/utilities.py` |
-| FR-16 | Upload, index, and query travel documents | `KnowledgeCenterPage.jsx`, `rag/`, `api/v1/knowledge.py` |
-| FR-17 | Provide restricted administration functions | `AdminDashboardPage.jsx`, `api/v1/admin.py` |
-
-### Non-functional requirements
-
-| ID | Requirement | Design consideration |
-|---|---|---|
-| NFR-01 | Security | Token-based authentication, authorization checks, protected routes, secrets outside Git |
-| NFR-02 | Maintainability | Separate frontend, API, services, agents, tools, and data access |
-| NFR-03 | Reliability | Validation, error handling, retries where implemented, automated tests |
-| NFR-04 | Responsiveness | React UI and streaming support for long-running planning |
-| NFR-05 | Extensibility | Replaceable providers and modular planning agents |
-| NFR-06 | Data integrity | Persistent models, migrations, ownership and transaction tests |
-| NFR-07 | Observability | Logging and explicit health/error checks; further improvements planned |
-
-## 4. Actors, Roles, and Access
-
-- **Visitor:** views public landing/explore experiences and navigates to authentication.
-- **Authenticated traveller:** edits preferences, generates plans, manages owned trips, and uses trip utilities.
-- **Trip owner/organizer:** configures a group trip, invites others, and manages membership and decisions subject to server-side authorization.
-- **Group member:** accesses shared trip information and participates in permitted discussions, proposals, votes, and tasks.
-- **Administrator:** accesses restricted overview and knowledge administration endpoints.
-- **External systems:** AI model providers, place/weather/currency services, Supabase, application databases, and vector storage.
-
-### Use-case diagram
-
-```mermaid
-flowchart LR
-  V[Visitor] --> A[Sign up / Sign in]
-  U[Authenticated traveller] --> P[Manage profile and preferences]
-  U --> G[Generate AI itinerary]
-  U --> T[Save and manage trips]
-  U --> K[Ask travel knowledge questions]
-  U --> X[Use travel utilities]
-  O[Trip organizer] --> I[Invite members]
-  O --> M[Manage group]
-  MBR[Group member] --> C[Chat and checklist]
-  MBR --> D[Propose and vote]
-  MBR --> E[Track expenses]
-  AD[Administrator] --> N[Knowledge source administration]
-  AD --> R[Admin overview]
-```
-
-## 5. Website Pages and Detailed Feature Specification
-
-### 5.1 Landing page — `LandingPage.jsx`
-
-**Purpose:** introduce the product, explain the planning value proposition, and direct visitors toward exploring destinations or starting a plan. The interface includes a hero section, navigation, and footer components. **User path:** land on the homepage → understand the platform → sign in or proceed to available discovery/planning pages.
-
-### 5.2 Authentication and password recovery — `AuthPage.jsx`, `ForgotPasswordPage.jsx`
-
-**Purpose:** create a user identity and maintain authenticated access. Supabase client/session logic lives under `frontend/src/auth/`. The API client attaches the appropriate session token for protected calls. Protected routes gate private pages, while backend checks remain authoritative. Password recovery has a dedicated UI. **Dependencies:** correctly configured Supabase URL and public anon key, valid callback settings, and backend token verification.
-
-### 5.3 Profile and preferences — `ProfilePage.jsx`, `PreferencesPage.jsx`
-
-**Purpose:** store user details and reusable travel choices rather than repeating them in every request. Preference data is designed to inform personalization. The backend exposes user/profile/preferences operations; the frontend provides corresponding screens. **Typical flow:** authenticate → open profile/preferences → review or edit → save → reuse on subsequent planning requests.
-
-### 5.4 AI planner — `PlannerPage.jsx`
-
-**Purpose:** turn a natural-language travel request into a structured travel plan. The user supplies trip intent such as destination, dates or duration, budget, interests, travel style, and companions. The frontend sends the request to the FastAPI planning endpoint. The multi-agent backend coordinates specialized responsibilities and produces itinerary output, with a streaming path for progress updates. Components include `ChatInput`, `MessageBubble`, `AgentTimeline`, `PlanCard`, `DayCard`, and `CriticScore`.
-
-**Expected itinerary elements:** destination context, day-wise activities, visit sequencing, estimated cost considerations, relevant weather/places, and reviewable recommendations. Exact response fields depend on the active Pydantic schema and agent output.
-
-**User flow:** enter request → submit → agents research/compose/check → inspect generated days and costs → save or revise trip → open saved trip. Failure conditions include missing LLM/provider credentials, external API rate limits, malformed model responses, or unavailable persistence.
-
-### 5.5 Explore and travel guide — `ExplorePage.jsx`, `TravelGuidePage.jsx`
-
-**Purpose:** help users discover destinations and contextual travel information. Place-search tools support relevant discovery. The guide view is intended to bring travel guidance into a single interface. External search results and map links depend on configured providers; a fully embedded map is **not guaranteed** by the current code.
-
-### 5.6 Saved trips and trip detail — `TripsPage.jsx`, `TripDetailPage.jsx`
-
-**Purpose:** provide continuity between planning sessions. The trip service and trip API support listing, creating, retrieving, updating, and deleting trip records, plus itinerary-day revision. Trip detail acts as the hub for itinerary review, group collaboration, expenses, journal, and utilities. **Access rule:** the backend should enforce ownership or authorized membership, not rely solely on hidden frontend buttons.
-
-### 5.7 Group workspace — `GroupOverview.jsx`, `GroupMembers.jsx`
-
-**Purpose:** transform an individual itinerary into a coordinated group experience. The workspace provides shared trip context and membership management. Supported backend concepts include group activation, members, roles, ownership transfer, leaving/removing members, and permission checks. Owner/member actions must be authorized server-side.
-
-### 5.8 Invitations — `GroupInvitations.jsx`, `InvitationAcceptPage.jsx`
-
-**Purpose:** let the organizer invite companions without manually copying plans between applications. Invitation APIs support creation, listing, preview, acceptance, and revocation; the repository also contains migration support for link invitations. **Flow:** organizer creates invite → recipient opens link → signs in if needed → backend validates invitation and permissions → membership is recorded → group workspace becomes accessible. Expired/revoked/invalid invitations should produce an explicit error state.
-
-### 5.9 Proposals, voting, and decisions — `GroupProposals.jsx`, `GroupDecisions.jsx`
-
-**Purpose:** resolve disagreements transparently. Members can propose itinerary options, vote, review results, and finalize a decision according to permitted roles. The backend contains decision snapshots and related schema migrations. A finalized decision may be applied to the trip/replanning workflow. **Value:** avoids losing group consensus inside informal chats.
-
-### 5.10 Group chat, checklist, and notifications
-
-`GroupChat.jsx` provides shared conversation; `GroupChecklist.jsx` tracks preparation tasks and completion state; `GroupNotifications.jsx` surfaces updates and unread items. Together these support day-to-day coordination: discuss an option, assign/complete preparation items, and see changes without switching apps. Data consistency and access control depend on the collaboration API and database.
-
-### 5.11 Expense manager — `ExpenseManager.jsx`
-
-**Purpose:** record trip spending and make costs visible to the group. Expense services/API cover create, list, update, delete, and summary operations. The feature is intended for budget awareness and shared visibility; **do not assume automatic bank integrations or payment settlement**, which are not established by the supplied code overview.
-
-### 5.12 Travel journal — `TripJournal.jsx`
-
-**Purpose:** preserve trip experiences alongside the itinerary. The journal API and service support journal entries, edits/deletion, and statistics. Journal content belongs to the trip context and must be subject to appropriate authorization.
-
-### 5.13 Travel utilities — `TripUtilities.jsx`
-
-Utilities include weather lookup, currency conversion, place search, route-related data, packing lists, and route optimization. These are assistance tools rather than guaranteed live booking integrations. The project has tools under `tools/`, implementations under `utils/`, and API endpoints under `api/v1/utilities.py`. Provider-backed results can be limited by credentials, coverage, freshness, and quota.
-
-### 5.14 Knowledge center and RAG — `KnowledgeCenterPage.jsx`
-
-**Purpose:** answer questions using indexed travel documents rather than relying on a model's general memory alone. The repository contains modules for ingestion, chunking, embeddings, vector storage, retrieval, and answer generation, plus evaluation utilities and citation tests. Administrative ingestion and user-facing question answering are separate responsibilities. **Prerequisite:** documents must actually be indexed into a working collection; empty/unavailable vector storage cannot provide grounded answers.
-
-### 5.15 Admin dashboard — `AdminDashboardPage.jsx`
-
-**Purpose:** provide restricted operational oversight. The backend includes admin analytics and knowledge-source management. Administrative privileges must be verified by the server. Dashboard metrics are dependent on real database records and should not be presented as verified live analytics until tested.
-
-## 6. AI System Design: Multi-Agent Planning
-
-The repository separates the planning workflow into agents with distinct responsibilities:
-
-| Agent/module | Responsibility |
-|---|---|
-| `supervisor.py` | Coordinates planning intent and agent execution |
-| `preference_extractor.py` | Extracts useful user preferences/constraints from the request |
-| `research_agent.py` | Collects destination and activity context using available tools |
-| `weather_agent.py` | Incorporates weather context where provider data is available |
-| `itinerary_agent.py` | Assembles structured day-by-day travel suggestions |
-| `budget_agent.py` | Evaluates costs and budget fit |
-| `critic_agent.py` | Reviews output quality and constraints |
-| `knowledge_agent.py` | Connects planning/question answering to available knowledge |
-| `chat_agent.py` | Supports conversational planning interactions |
-| `agentic_workflow.py` | Wires agent execution and workflow state |
-
-### Planning workflow
-
-```mermaid
-flowchart TD
-  A[Traveller describes trip] --> B[React planner / API client]
-  B --> C[FastAPI planning endpoint]
-  C --> D[Supervisor and preference extraction]
-  D --> E[Research agent]
-  D --> F[Weather agent]
-  E --> G[Itinerary agent]
-  F --> G
-  G --> H[Budget agent]
-  H --> I[Critic / validation]
-  I --> J{Acceptable plan?}
-  J -->|Revise when supported| G
-  J -->|Return result| K[Structured itinerary]
-  K --> L[React plan and day cards]
-  L --> M[Save / revise trip]
-  M --> N[Trip persistence layer]
-```
-
-This diagram represents the **conceptual responsibilities and target workflow**, not a claim that every branch or feedback loop is exercised in the current deployment.
-
-### Planning and optimization algorithms
-
-**Constraint Satisfaction (CSP):** `services/itinerary_csp.py` contains constraint-based itinerary logic intended to satisfy limits such as feasible activity choices, timing, and plan restrictions. **Genetic Algorithm (GA):** `services/itinerary_ga.py` provides an optimization approach using candidate itineraries and iterative search. **Route optimization:** `services/route_optimization.py` handles ordering/route-related optimization. The repository contains dedicated unit/API tests for all three areas. Their exact constraints, objective functions, and production outcomes should be checked against those modules before making benchmark claims.
-
-## 7. Retrieval-Augmented Generation (RAG) Architecture
-
-```mermaid
-flowchart LR
-  A[Knowledge document] --> B[Ingestion]
-  B --> C[Text extraction and chunking]
-  C --> D[Embedding generation]
-  D --> E[(ChromaDB vector collection)]
-  Q[Traveller question] --> R[Query embedding]
-  R --> S[Similarity retrieval]
-  E --> S
-  S --> T[Relevant chunks and source metadata]
-  T --> U[Grounded answer generation]
-  Q --> U
-  U --> V[Answer and available citations]
-```
-
-**Ingestion path:** validate source → extract content → split into chunks → embed chunks → store vectors and source metadata. **Query path:** embed the question → retrieve similar chunks → assemble context → generate an answer → return citation/source information when supported. Relevant implementation files: `rag/ingestion.py`, `chunking.py`, `embeddings.py`, `vector_store.py`, `retrieval.py`, `generation.py`, and `api/v1/knowledge.py`.
-
-**Limitations:** answers depend on ingested documents, retrieval relevance, provider access, and persistent vector storage. A local ChromaDB directory is not automatically durable on ephemeral cloud hosting.
-
-## 8. Overall System Architecture
-
-```mermaid
-flowchart TB
-  subgraph Client[Frontend: React + Vite]
-    UI[Pages, forms and trip workspace]
-    AuthUI[Supabase auth client]
-    APIClient[HTTP / SSE API client]
-  end
-  subgraph Server[Backend: FastAPI]
-    Routes[Versioned API routers and planning endpoints]
-    Services[Trip, collaboration, expense, journal, utility services]
-    Agents[LangGraph / multi-agent planning]
-    RAG[RAG ingestion, retrieval and generation]
-  end
-  subgraph Storage[Storage and identity]
-    SQL[(SQLAlchemy models / Alembic migrations)]
-    Mongo[(MongoDB integration)]
-    Vector[(ChromaDB vector store)]
-    Supabase[Supabase authentication]
-  end
-  Providers[LLM, weather, search, currency and places providers]
-  UI --> APIClient --> Routes
-  AuthUI --> Supabase
-  Routes --> Services
-  Routes --> Agents
-  Routes --> RAG
-  Services --> SQL
-  Services -.-> Mongo
-  RAG --> Vector
-  Agents --> Providers
-  Services --> Providers
-```
-
-**Persistence clarification:** this repository contains both relational persistence (`database/connection.py`, `database/models.py`, Alembic migrations; local SQLite fallback) and a MongoDB module (`database/mongodb.py`). MongoDB integration and migration documents exist, but a fully completed MongoDB-only migration is **not verified**. The architecture deliberately shows both rather than claiming a single fully operational datastore.
-
-### Layer responsibilities
-
-| Layer | Main responsibilities | Code location |
-|---|---|---|
-| Presentation | Page navigation, forms, trip cards, group workspace, status messages | `frontend/src/` |
-| API | Request parsing, auth dependencies, response schemas, routing | `main.py`, `api/v1/`, `models/` |
-| Domain services | Trip persistence, group decisions, expenses, journals, utilities | `services/` |
-| Intelligence | Agent orchestration, prompts, tools, itinerary optimization | `agent/`, `prompt_library/`, `tools/` |
-| Knowledge | Document ingestion, embeddings, vector retrieval, generation | `rag/`, `evaluation/` |
-| Persistence | Database connection, data models, migrations, Mongo integration | `database/`, `alembic/` |
-| Testing | Backend and frontend tests | `tests/`, `frontend/tests/` |
-
-## 9. Core Process Flowcharts
-
-### 9.1 End-to-end user journey
-
-```mermaid
-flowchart TD
-  Start([Open TripWeaver]) --> Auth{Signed in?}
-  Auth -->|No| Login[Register or sign in]
-  Login --> Profile[Set profile and preferences]
-  Auth -->|Yes| Profile
-  Profile --> Plan[Describe trip requirements]
-  Plan --> Generate[Generate and review itinerary]
-  Generate --> Save[Save trip]
-  Save --> Group{Travelling with others?}
-  Group -->|Yes| Invite[Invite members and collaborate]
-  Invite --> Decide[Discuss, vote, and finalize]
-  Group -->|No| Tools[Use trip utilities]
-  Decide --> Tools
-  Tools --> Track[Expenses, checklist, journal]
-  Track --> End([Manage trip throughout journey])
-```
-
-### 9.2 Group decision lifecycle
-
-```mermaid
-flowchart TD
-  A[Owner enables group workspace] --> B[Create invitation]
-  B --> C[Recipient accepts]
-  C --> D[Authorized group member]
-  D --> E[Submit proposal]
-  E --> F[Members review and vote]
-  F --> G[Finalize decision with permissions]
-  G --> H[Apply decision / revise itinerary where supported]
-  H --> I[Updated shared trip context]
-```
-
-### 9.3 Sequence diagram: itinerary generation
-
-```mermaid
-sequenceDiagram
-  actor User
-  participant Web as React Planner
-  participant API as FastAPI
-  participant AI as Agent Workflow
-  participant Tools as External Tools
-  participant DB as Trip Service / DB
-  User->>Web: Enter destination, budget, interests, duration
-  Web->>API: POST planning request
-  API->>AI: Parse and coordinate planning
-  AI->>Tools: Request destination/weather context
-  Tools-->>AI: Available results
-  AI-->>API: Structured itinerary / progress
-  API-->>Web: Plan response or stream
-  Web-->>User: Show itinerary and cost details
-  User->>Web: Save trip
-  Web->>API: Save request
-  API->>DB: Persist trip for authorized user
-  DB-->>API: Trip identifier / result
-  API-->>Web: Saved trip response
-```
-
-## 10. Data Model and Relationships
-
-The relational schema and migrations include these domain entities: users, trips, group members, invitations, proposals, decisions, checklist items, messages, notifications, expenses, journal entries, and knowledge sources. The diagram below is a **high-level logical model**, not an exact foreign-key export.
-
-```mermaid
-erDiagram
-  USER ||--o{ TRIP : owns
-  TRIP ||--o{ TRIP_MEMBER : has
-  USER ||--o{ TRIP_MEMBER : joins
-  TRIP ||--o{ INVITATION : invites
-  TRIP ||--o{ PROPOSAL : considers
-  PROPOSAL ||--o{ DECISION : informs
-  TRIP ||--o{ CHECKLIST_ITEM : contains
-  TRIP ||--o{ MESSAGE : contains
-  TRIP ||--o{ EXPENSE : tracks
-  TRIP ||--o{ JOURNAL_ENTRY : records
-  USER ||--o{ NOTIFICATION : receives
-```
-
-**Data ownership:** private trips are associated with an authenticated identity; group data must be checked against membership and role permissions. **Lifecycle:** create trip → optionally activate group → invite members → coordinate proposals/tasks → track expenses and journal → update or delete according to permissions. **Schema evolution:** migration scripts live in `alembic/versions/`; MongoDB mapping notes live in `docs/MONGODB_MIGRATION_MAPPING.md`.
-
-## 11. Technology Stack
-
-| Concern | Technology / approach |
-|---|---|
-| Frontend | React, Vite, React Router, JavaScript/JSX, CSS |
-| Backend | Python, FastAPI, Pydantic, Uvicorn |
-| AI orchestration | LangGraph/LangChain-style agents and tool calling |
-| Retrieval | ChromaDB, embeddings, chunking, retrieval, RAG generation |
-| Identity | Supabase authentication |
-| Relational data | SQLAlchemy, Alembic, SQLite fallback / configured database |
-| Additional data integration | MongoDB driver/integration module; connectivity to verify |
-| Travel information | External LLM, search, weather, currency, and place APIs |
-| Quality | Pytest, frontend Node test scripts, production build checks |
-| Deployment targets | Vercel-compatible frontend, Render-compatible FastAPI backend |
-
-## 12. Repository Structure
-
-```text
-Grevix_AITripWeaver/
-├── agent/              # Supervisor, research, weather, itinerary, budget, critic, chat
-├── api/v1/             # Users, trips, collaboration, expenses, journal, knowledge, utilities, admin
-├── config/             # Application configuration
-├── database/           # Database connection, relational models, MongoDB integration
-├── alembic/            # Schema migrations
-├── docs/               # RAG, optimization, group architecture, deployment audits
-├── evaluation/         # RAG evaluation cases, metrics, runners
-├── frontend/
-│   ├── src/pages/      # Landing, auth, planner, trips, profile, guide, admin, knowledge
-│   ├── src/components/ # Plan cards, utilities, expenses, journal, group workspace
-│   ├── src/auth/       # Supabase client and auth context
-│   └── tests/          # Frontend unit tests
-├── memory/             # Short/long-term agent memory modules
-├── models/             # API and agent schemas
-├── prompt_library/     # Prompt templates for specialized agents
-├── rag/                # Ingestion, chunking, embeddings, vector store, retrieval
-├── services/           # Domain services, CSP/GA, route optimization
-├── tests/              # Backend and integration-oriented tests
-├── tools/              # Search, weather, currency, arithmetic and expense tools
-├── utils/              # Shared helpers and streaming
-├── main.py             # FastAPI application entry point
-├── requirements.txt
-└── README.md
-```
-
-## 13. API Design and Integration
-
-**Base local API:** `http://127.0.0.1:8000`. **Interactive documentation:** `/docs` (when the backend is running). The backend contains planning endpoints such as `POST /plan` and `POST /plan/stream` plus versioned routers under `api/v1/` for trips, users, collaboration, expenses, journal, knowledge, utilities, and admin. The precise methods, parameters, and paths should be taken from the running OpenAPI schema rather than inferred from the frontend alone.
-
-**Request lifecycle:** browser → authenticated API client → FastAPI route → validation and permission dependency → domain service/agent → database or provider → serialized response → React UI. Streaming requests additionally require a correctly configured stream transport and frontend reader.
+The initial build focuses on demonstrating a functional minimum viable product (MVP) for AI-powered itinerary generation, personalized travel recommendations, budget and weather integration, and an interactive travel dashboard. The platform is designed to support further enhancements as new requirements are introduced during the hackathon.
 
 ---
 
-## 14. Local Setup
+## 1. Problem Statement
 
-### Prerequisites
+Planning a trip often requires travellers to move between multiple disconnected tools to research destinations, compare attractions, estimate costs, check weather, arrange daily activities, prepare packing lists, and coordinate with other travellers. This process is time-consuming and can result in unrealistic schedules, overlooked constraints, inconsistent information, and budgets that are difficult to manage.
 
--   Git
--   A compatible Python version
--   Node.js and npm compatible with `frontend/package.json`
--   MongoDB Atlas or an approved isolated MongoDB test instance
--   Supabase project
--   API credentials for the external features you intend to test
+Generic itinerary generators may return a list of popular places without sufficiently considering a traveller’s interests, trip duration, spending limit, weather conditions, travel pace, or practical constraints. Recommendations may also lack supporting context, while changes to one part of a trip can require the user to manually revise the rest of the plan.
 
-### Clone the repository
+**Problem to solve:** How might we build an intelligent travel-planning platform that turns a traveller’s goals and constraints into a personalized, practical, budget-aware trip plan while bringing research, weather, maps, packing, expenses, and contextual assistance into one experience?
 
-``` bash
-git clone https://github.com/patilshrutika1803/Grevix_AITripWeaver.git
-cd Grevix_AITripWeaver
-```
+### 1.1 Target users
 
-If already cloned, open the existing project folder instead.
+- **Solo travellers** who want a personalized itinerary without researching every detail manually.
+- **Friends and families** who need a shared plan and a way to coordinate preferences and decisions.
+- **Budget-conscious travellers** who need estimated costs and visibility into spending.
+- **First-time visitors** who need destination research and contextual travel guidance.
+- **Trip organizers** who need to keep schedules, packing, expenses, and logistics together.
 
-### Create a Python virtual environment (Windows CMD)
+### 1.2 Key challenges
 
-``` cmd
-py -3.12 -m venv .venv
-.venv\\Scripts\\python.exe -m pip install --upgrade pip
-.venv\\Scripts\\python.exe -m pip install -r requirements.txt
-```
-
-PowerShell users can activate the environment with `..\\.venv\\Scripts\\Activate.ps1` from the repository root if desired. The commands above avoid shell activation and call the virtual-environment Python directly.
-
-### Install frontend dependencies
-
-``` cmd
-cd frontend
-npm ci
-cd ..
-```
-
-Configure the ignored root `.env` file with the required local settings.
-Use an example template only if one exists in the checked-out branch.
-Never commit `.env` or paste secrets into issues/chat.
-
-## 15. Environment Variables
-
-Variable requirements depend on the actual code paths enabled. Verify
-usage before renaming or deleting variables.
-
-### Backend --- root `.env`
-
-``` dotenv
-PACK_GO_ENV=development
-PACK_GO_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-
-# Supabase
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-# Only if required by the active backend auth/admin path; backend-only.
-SUPABASE_SERVICE_ROLE_KEY=
-
-# MongoDB
-MONGODB_URI=
-MONGODB_DATABASE=pack-go
-
-# AI/search providers
-GROQ_API_KEY=
-GOOGLE_API_KEY=
-TAVILY_API_KEY=
-
-# Travel utilities
-OPENWEATHERMAP_API_KEY=
-EXCHANGE_RATE_API_KEY=
-```
-
-### Frontend public build-time configuration
-
-The current Vite configuration loads the root environment and maps the
-public Supabase URL to the name expected by the frontend client. Verify
-`frontend/vite.config.js` before changing that arrangement.
-
-Common public variables:
-
-``` dotenv
-SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-VITE_API_BASE_URL=
-```
-
--   During local development, the Vite proxy may forward requests to
-    `http://127.0.0.1:8000`.
--   In Vercel, set `VITE_API_BASE_URL` to the deployed backend origin if
-    the production API client requires it.
--   Local ignored `.env` files are not automatically present in Vercel
-    or Render.
--   `MONGODB_URI`, provider secrets, and `SUPABASE_SERVICE_ROLE_KEY`
-    must never be exposed in the frontend bundle or assigned a `VITE_`
-    prefix.
-
-Checklist: - \[ \] `.env` is ignored by Git. - \[ \] MongoDB
-URI/database are configured on the backend. - \[ \] Supabase public
-URL/anon key are configured for frontend builds. - \[ \] Backend token
-validation matches the current auth implementation. - \[ \] Provider
-keys are set for features being tested. - \[ \] Allowed origins include
-the actual frontend origin. - \[ \] Production secrets are configured in
-the backend host. - \[ \] Vercel build variables are configured
-independently from local `.env`.
-
-## 16. Run Locally
-
-Run backend and frontend in separate terminals.
-
-### Terminal A --- FastAPI backend
-
-From the repository root in Windows CMD:
-
-``` cmd
-.venv\\Scripts\\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Local API base:
-
-``` text
-http://127.0.0.1:8000
-```
-
-### Terminal B --- frontend
-
-``` cmd
-cd frontend
-npm run dev
-```
-
-Use the URL printed by Vite, commonly `http://localhost:5173`.
-
-### Useful URLs
-
-  Purpose               URL
-  --------------------- --------------------------------------
-  Frontend              `http://localhost:5173`
-  FastAPI Swagger UI    `http://127.0.0.1:8000/docs`
-  OpenAPI JSON          `http://127.0.0.1:8000/openapi.json`
-  Graph visualization   `http://127.0.0.1:8000/graph`
-
-The `/` or `/health` route may return 404 if it is not defined. Use
-`/docs` and routes shown by the running OpenAPI schema to verify the
-API.
-
-### Read-only MongoDB ping
-
-Run from the repository root in a separate terminal:
-
-``` powershell
-.\venv\Scripts\python.exe -c "from database.mongodb import get_database; db=get_database(); print(db.client.admin.command('ping'))"
-```
-
-Expected result:
-
-``` text
-{'ok': 1.0}
-```
-
-A timeout means a usable server could not be reached in time. Check
-cluster status, DNS/network access, Atlas IP access rules, VPN/firewall
-restrictions, and then credentials once network connectivity is
-established. Never share the full connection string.
-
-## 17. API Overview
-
-Use the running API's OpenAPI schema as the source of truth:
-
--   Swagger UI: `/docs`
--   OpenAPI JSON: `/openapi.json`
-
-### Main API areas
-
-  ---------------------------------------------------------------------------------------------
-  Area                    Representative endpoints                      Purpose
-  ----------------------- --------------------------------------------- -----------------------
-  Planning                `POST /plan`, `POST /plan/stream`             AI trip planning
-
-  Trips                   `/api/v1/trips`                               Trip CRUD
-
-  Users                   `/api/v1/users/me`,                           Profile/preferences
-                          `/api/v1/users/me/preferences`
-
-  Group travel            `/api/v1/trips/{trip_id}/workspace`,          Collaboration and
-                          `/members`, `/invitations`                    membership
-
-  Invitations             `/api/v1/invitations/{token}`, `/accept`      Preview and acceptance
-
-  Proposals               `/api/v1/trips/{trip_id}/proposals`,          Proposals and voting
-                          `/api/v1/proposals/{proposal_id}/vote`
-
-  Decisions               `/api/v1/proposals/{proposal_id}/finalize`,   Finalize/apply
-                          `/api/v1/decisions/{decision_id}/apply`       decisions
-
-  Messages                `/api/v1/trips/{trip_id}/messages`            Group chat
-
-  Expenses                `/api/v1/trips/{trip_id}/expenses`            Expenses and summaries
-
-  Journal                 `/api/v1/trips/{trip_id}/journal`             Journal entries
-
-  Checklists              `/api/v1/trips/{trip_id}/checklist`           Trip checklist
-
-  Knowledge               `/api/v1/knowledge`, `/api/v1/knowledge/ask`  RAG and knowledge
-
-  Admin knowledge         `/api/v1/admin/knowledge/documents`           Document management
-
-  Utilities               `/api/v1/utilities/weather`, `/currency`,     Travel utilities
-                          `/places`
-
-  Routes/maps             `/api/v1/trips/{trip_id}/utilities/map`,      Maps and routing
-                          `/route/optimize`
-
-  Admin                   `/api/v1/admin/overview`                      Admin overview
-  ---------------------------------------------------------------------------------------------
-
-Protected endpoints require valid authentication and appropriate
-ownership, membership, or administrator permissions. Consult `/docs` for
-exact schemas and request bodies.
-
-## 18. Deployment
-
-The intended arrangement is a Vercel frontend and a separately deployed
-FastAPI backend.
-
-### Frontend --- Vercel
-
--   **Repository to deploy:** `patilshrutika1803/Grevix_AITripWeaver`.
--   **Root directory:** `frontend`
--   **Build command:** `npm run build`
--   **Output directory:** `dist`
-
-Steps: 1. Import the repository into Vercel. 2. Set root directory to
-`frontend`. 3. Configure the build command/output directory. 4. Set
-public frontend environment variables in Vercel. 5. Set
-production API client. 6. Confirm `frontend/vercel.json` has the SPA
-rewrite for client-side routes. 7. Redeploy after changing build-time
-variables. 8. Test sign-in, protected pages, direct route navigation,
-and real API calls.
-
-Never set the deployed frontend API base URL to `localhost` or
-`127.0.0.1`; those refer to the visitor's own machine.
-
-### Backend --- Render
-
--   Repository root: directory containing `main.py`
--   **Build command:**
-
-``` bash
-pip install -r requirements.txt
-```
-
--   **Start command:**
-
-``` bash
-uvicorn main:app --host 0.0.0.0 --port $PORT
-```
-
-Configure MongoDB, Supabase/auth, CORS/allowed origins, AI provider,
-utility-provider, and vector-storage variables in Render's environment
-settings. Do not depend on local `.env` being uploaded with the
-application.
-
-### MongoDB Atlas
-
-1.  Verify the cluster is running.
-2.  Create a database user with least-privilege access.
-3.  Configure Network Access for the backend host and local development
-    machine as needed.
-4.  Configure `MONGODB_URI` and `MONGODB_DATABASE` in the backend
-    environment.
-5.  Run a read-only ping from an allowed environment.
-6.  Test safe write/read persistence using test data or an isolated test
-    database.
-
-Avoid broad public access rules as a shortcut.
-
-### Supabase
-
-1.  Configure the project URL and public anon key for frontend builds.
-2.  Configure backend token verification according to the active
-    implementation.
-3.  Set site/redirect URLs for local and deployed frontend domains.
-4.  Test sign-in, token forwarding, protected API calls, and
-    expired-session behavior.
-5.  Keep privileged keys backend-only.
-
-### RAG/vector persistence
-
-Local vector files may be lost if the host uses an ephemeral filesystem.
-Before production use: 1. Identify the configured ChromaDB storage
-path/provider. 2. Confirm data survives restart/redeploy. 3. Confirm
-source metadata and vectors remain consistent. 4. Test
-ingestion/re-indexing and retrieval against known documents. 5. Document
-any persistent-volume or hosted-vector-service requirement.
-
-### Production checklist
-
--   [ ] Vercel build succeeds.
--   [ ] Render backend starts.
--   [ ] MongoDB is reachable from the deployed backend.
--   [ ] Supabase auth works live.
--   [ ] Frontend API base points to the deployed backend.
--   [ ] CORS allows the deployed frontend.
--   [ ] Secrets are configured only in appropriate host settings.
--   [ ] Direct route navigation and refresh work.
--   [ ] Trip create/read persistence passes.
--   [ ] Group permissions and invitation flows pass.
--   [ ] RAG source retrieval persists across restarts.
--   [ ] Logs contain no credentials.
--   [ ] Critical workflows are tested with safe accounts/data.
-
-## 19. Testing
-
-### Frontend
-
-Run from `frontend/`:
-
-``` bash
-npm test
-npm run lint
-npm run build
-```
-
-### Backend
-
-Run from the repository root:
-
-``` bash
-python -m pytest -q
-```
-
-Run a focused test:
-
-``` bash
-python -m pytest -q tests/test_plan_trip_persistence.py
-```
-
-Compile application/test modules:
-
-``` bash
-python -m compileall -q agent api config database exception evaluation logger memory models prompt_library rag scripts services tests tools utils main.py
-```
-
-### Integration-test checklist
-
-  Workflow      Verify
-  ------------- ----------------------------------------------------------
-  Planner       Valid request, streaming, error handling
-  Persistence   Create plan, save, read back, verify owner
-  Preferences   Defaults, update, persistence, invalid input
-  Journal       CRUD and authorization
-  Invitations   Create, preview, accept, invalid/expired token
-  Membership    Workspace access and unauthorized denial
-  Chat          Send and retrieve messages
-  Decisions     Proposal, vote, finalize, apply
-  Expenses      Create, list, update, summary, participant validation
-  RAG           Ingest known sample, retrieve it, verify source metadata
-  Utilities     Provider response and missing-key behavior
-  Deployment    Direct routes, CORS, auth, logs, persistent storage
-
-Report unit tests, mocked integration tests, and live external-service
-tests separately. A mock passing is not proof that production services
-work.
-
-## 20. Security
-
--   Never commit `.env`, API keys, passwords, session tokens, database
-    URIs, or service-role keys.
--   Do not commit local database backups such as `pack_go.db.backup-*`; verify Git tracking and remove sensitive artifacts before pushing.
--   Rotate credentials exposed in screenshots, chat, logs, or Git
-    history.
--   Keep Supabase service-role and provider keys backend-only.
--   Use public Supabase configuration only in frontend code.
--   Use least-privilege MongoDB users and suitable network restrictions.
--   Enforce ownership and membership on protected resources.
--   Avoid logging raw tokens, invitation tokens, or connection strings.
--   Use isolated test data and avoid destructive production tests.
--   Review changes before committing.
-
-Before committing:
-
-``` bash
-git status --short
-git diff --check
-git diff --stat
-```
-
-Check whether `.env` is ignored:
-
-``` bash
-git check-ignore -v .env
-```
-
-Adding a secret to `.gitignore` does not remove it from existing Git
-history. Rotate exposed credentials and remediate history safely if
-needed.
-
-## 21. Verification Status and Known Limitations
-
-The following status reflects checks actually performed during the current local setup on 11 Oct 2026. Update it whenever new checks are run.
-
-| Area | Current status | Evidence / limitation |
+| Challenge | Effect on travellers | Proposed response |
 |---|---|---|
-| Frontend production build | PASS | `npm run build` succeeded; Vite emitted a non-blocking large-chunk warning. |
-| Frontend tests | PASS | `npm test`: 9 passed, 0 failed. |
-| Python dependency consistency | PASS | `.venv\\Scripts\\python.exe -m pip check` reported no broken requirements. |
-| Backend import | PASS | Importing `main` succeeded and initialized LangGraph MemorySaver. |
-| API docs route | PASS | `curl.exe -I http://127.0.0.1:8000/docs` returned HTTP 200. |
-| Frontend root HTTP response | PASS, limited | `curl.exe -I http://localhost:5173/` returned HTTP 200; this does not prove React rendered successfully. |
-| Browser rendering | NOT VERIFIED | The browser showed a blank white page; inspect DevTools Console and fix before claiming end-to-end success. |
-| MongoDB connectivity | NOT VERIFIED | No successful MongoDB ping was recorded in this setup session. |
-| Live Supabase authentication | NOT TESTED | Real sign-in and backend token verification are not verified. |
-| Full backend test suite | NOT TESTED in this setup session | Run it after environment configuration and investigate failures. |
-| Production readiness | NOT CONFIRMED | Full end-to-end workflows and deployment configuration remain unverified. |
+| Fragmented research | Information is scattered across multiple services | Centralize travel planning and supporting utilities in one dashboard |
+| Generic itineraries | Plans may not reflect personal interests or constraints | Collect preferences and use a multi-step AI planning workflow |
+| Unclear trip costs | Travellers may underestimate daily or total spending | Estimate costs and expose a budget breakdown |
+| Weather uncertainty | Outdoor activities may be unsuitable for the conditions | Include weather information in planning and trip review |
+| Inefficient schedules | Places may be arranged without considering time or travel order | Organize activities by day and support route/sequence optimization |
+| Packing uncertainty | Important items can be forgotten | Generate a packing checklist based on trip context |
+| Context gaps in AI answers | Generic answers may miss relevant travel information | Retrieve relevant knowledge before generating contextual responses |
+| Group coordination overhead | Choices, tasks, and expenses can become difficult to track | Provide shared trip collaboration features |
 
-### Known follow-up work
+## 2. Proposed Solution
 
--   Resolve MongoDB connectivity and verify a real read-only ping.
--   Verify live Supabase authentication with the active backend
-    configuration.
--   Migrate remaining legacy backend tests to the current
-    MongoDB/Supabase architecture where appropriate.
--   Investigate all remaining test failures instead of assuming they are
-    obsolete.
--   Run real integration tests for planning/persistence and
-    collaboration.
--   Verify persistent vector storage and RAG source metadata in
-    deployment.
--   Verify Vercel/Render environment settings and production API calls.
--   Run the complete regression suite after the last code change.
+PACK & GO provides a unified travel workspace. A user enters a destination, travel dates or duration, budget, interests, travel style, and other preferences. The planning workflow uses this context to research the destination, consider weather and budget constraints, generate a day-by-day itinerary, estimate expenses, and refine the result. The traveller can review the plan, request changes, save the trip, and use supporting travel tools from the same platform.
 
-Update this section when fresh test evidence is available. Do not carry
-old test totals forward after the suite changes.
+The proposed experience is organized around five principles:
 
-## 22. Troubleshooting
+1. **Personalization:** plans should reflect the traveller’s preferences and constraints.
+2. **Practicality:** itinerary suggestions should consider duration, budget, weather, and activity order.
+3. **Explainable planning flow:** specialized steps should make it easier to understand how a plan is assembled and refined.
+4. **Contextual assistance:** answers should use relevant travel knowledge when available.
+5. **One travel workspace:** itinerary, expenses, packing, utilities, and collaboration should be accessible together.
 
-### Frontend crashes on startup
+## 3. Objectives and Expected Outcomes
 
--   Check which environment file Vite loads.
--   Verify the public Supabase URL and anon key.
--   Restart Vite after changing environment variables.
--   Inspect browser console and network errors.
--   Do not expose backend secrets to fix frontend configuration.
+- Generate structured, day-wise travel itineraries from user inputs.
+- Adapt recommendations to destination, duration, budget, interests, and travel preferences.
+- Present an estimated trip cost and a useful budget breakdown.
+- Surface relevant weather and destination information to support planning decisions.
+- Allow users to review, revise, and save trip plans.
+- Provide packing assistance and trip utilities in the planning workflow.
+- Support contextual travel questions using a retrieval-based knowledge pipeline.
+- Provide a shared workspace for group planning, coordination, and expense tracking.
 
-### `/` or `/health` returns 404
+## 4. Scope
 
-Those routes may not be defined. Use `/docs` and the actual endpoints in
-the current OpenAPI schema.
+### 4.1 Core scope for the initial MVP
 
-### Port 8000 is already in use
+- Travel request and preference collection.
+- AI-assisted itinerary generation.
+- Personalized destination and activity recommendations.
+- Budget estimation and cost breakdown.
+- Weather information within the planning experience.
+- Interactive dashboard to review the generated plan.
+- Ability to revise the plan through additional user instructions.
 
-An earlier backend process may already be running. Reuse it if healthy,
-or identify and stop the correct process before starting another server.
-Avoid duplicate Uvicorn processes on the same port.
+### 4.2 Extended platform scope
 
-### MongoDB timeout
+- Account and preference management.
+- Saved trip management.
+- Place and destination research.
+- Packing checklist and travel utilities.
+- Currency conversion and expense tracking.
+- Route or visit-order optimization.
+- RAG-powered travel knowledge and contextual Q&A.
+- Group trip invitations, members, proposals, voting, decisions, chat, and shared checklists.
+- Trip journal and administrative knowledge-management functions.
 
-Check cluster status, DNS, Atlas Network Access, local firewall/VPN,
-outbound TCP port `27017`, then credentials once a connection is
-possible. A timeout does not by itself prove a bad password.
+## 5. Stakeholders and User Roles
 
-### Invitation page loads but says unavailable
+| Role | Needs and responsibilities |
+|---|---|
+| Visitor | Understand the platform and access public discovery or authentication entry points |
+| Traveller | Enter trip requirements, generate plans, manage preferences, and review travel information |
+| Trip owner/organizer | Create a shared trip, invite participants, and coordinate the group plan |
+| Group member | Review shared trip details and participate in permitted collaboration activities |
+| Administrator | Manage designated administrative functions and knowledge sources |
+| External service/provider | Supply model responses or supporting data such as weather, places, maps, or currency rates |
 
-The SPA route only proves frontend routing works. Preview/acceptance
-also requires a configured API base URL, running backend, reachable
-database, valid token, and authentication if required.
+## 6. Functional Requirements
 
-### API returns 401/403
+### FR-01 — Travel request input
 
-Check session validity, token forwarding, backend verification, trip
-ownership, membership, and role requirements. Do not disable
-authorization to hide the error.
+The system shall collect the information needed to begin planning, including destination, trip duration or dates, budget, interests, and relevant travel preferences. Where essential information is missing, the interface should allow the user to provide or clarify it.
 
-### RAG shows zero sources
+**Expected result:** a structured travel request that can be passed to the planning workflow.
 
-Check ingestion status, document metadata, vector collection
-configuration, embedding provider, persistence across restarts, and
-retrieval configuration.
+### FR-02 — Preference-aware planning
 
-### Deployed frontend calls localhost
+The system shall use the traveller’s stated interests, travel style, budget, duration, and other available preferences to guide destination recommendations and itinerary generation.
 
-Set `VITE_API_BASE_URL` to the deployed backend origin in Vercel and
-redeploy.
+**Expected result:** suggestions are relevant to the submitted request rather than a generic list of attractions.
+
+### FR-03 — AI itinerary generation
+
+The system shall generate a day-wise itinerary with activities organized into a readable sequence. Each itinerary item should include useful details where available, such as place/activity name, description, suggested timing, and estimated cost.
+
+**Expected result:** a structured plan that the traveller can review and refine.
+
+### FR-04 — Destination research
+
+The system shall support destination and place research to provide relevant information for itinerary choices. Search results and generated recommendations should be presented clearly, with external information identified where applicable.
+
+### FR-05 — Budget estimation
+
+The system shall estimate trip expenses from the available trip inputs and activity information. Where sufficient data exists, the system should summarize expected costs by category or day and compare the estimate with the user’s budget.
+
+**Expected result:** a visible cost estimate that helps the traveller judge whether the plan is financially practical.
+
+### FR-06 — Weather-aware planning
+
+The system shall retrieve or present relevant weather information when the configured provider is available. Weather information should help users evaluate outdoor activities and decide whether an itinerary needs adjustment.
+
+### FR-07 — Itinerary revision
+
+The system shall allow the traveller to request changes, such as changing the budget, duration, interests, or activities. The planning workflow should use the revised constraints to regenerate or update the plan where supported.
+
+### FR-08 — Plan review and persistence
+
+The platform shall provide an interactive view of the itinerary and support saving and retrieving trip information for authenticated users where configured.
+
+### FR-09 — Packing assistance
+
+The platform shall support a packing checklist informed by trip context, such as destination, duration, weather, and planned activities. Users should be able to review items and track their packing progress where the checklist interface is available.
+
+### FR-10 — Map, place, and route utilities
+
+The platform shall expose place-related information and map or route assistance where a suitable provider or integration is configured. The user should be able to inspect trip locations and use route or visit-order tools where supported.
+
+### FR-11 — Contextual travel Q&A with RAG
+
+The system shall support a retrieval-based question-answering workflow. Relevant travel documents or knowledge content are processed, indexed, retrieved for a user question, and supplied as context to the answer-generation step.
+
+**Expected result:** responses informed by retrieved material when relevant content is available, rather than relying only on an unconstrained model response.
+
+### FR-12 — Travel utilities
+
+The platform shall make relevant trip utilities available from the travel workspace. These may include currency conversion, weather lookup, place search, route assistance, and expense calculations according to configured integrations.
+
+### FR-13 — Expense management
+
+The platform shall support recording trip expenses and presenting summaries. For group trips, expense visibility and permitted actions should follow the trip’s access rules.
+
+### FR-14 — Group planning and coordination
+
+The extended platform shall support shared trip workspaces with member management and invitations. Where enabled, members can discuss options, submit proposals, vote, record decisions, use shared checklists, and view notifications.
+
+### FR-15 — Trip journal
+
+The platform shall provide a place to record trip notes or memories and associate them with a trip where the journal feature is enabled.
+
+### FR-16 — Authentication and access control
+
+Private trip and profile operations shall require authentication. Server-side authorization shall determine whether a user may access or modify a resource; hiding a control in the frontend alone shall not be treated as authorization.
+
+### FR-17 — Administrative functions
+
+Designated administrative interfaces shall be restricted to authorized administrators. Administrative actions should be validated and logged where supported.
+
+## 7. Non-Functional Requirements
+
+| ID | Requirement | Description |
+|---|---|---|
+| NFR-01 | Usability | The user should be able to enter trip requirements and understand the resulting itinerary without needing technical knowledge. |
+| NFR-02 | Responsiveness | The interface should present progress and results clearly during longer planning operations where streaming is supported. |
+| NFR-03 | Modularity | Frontend, API, AI agents, tools, services, and data access should remain logically separated. |
+| NFR-04 | Security | Secrets must be kept out of source control; protected resources require authentication and authorization. |
+| NFR-05 | Reliability | External-provider failures and invalid inputs should be handled with useful errors where implemented. |
+| NFR-06 | Maintainability | Features should be organized into reusable components and services. |
+| NFR-07 | Extensibility | New agents, travel utilities, and data providers should be addable without redesigning the whole application. |
+| NFR-08 | Data integrity | User and trip records should preserve ownership and consistency through validated operations and database constraints where configured. |
+| NFR-09 | Privacy | User-specific trip details and group data should only be accessible to authorized users. |
+| NFR-10 | Transparency | Estimated prices, weather, and generated recommendations should be treated as planning assistance and may require user verification. |
+
+## 8. User Journeys and End-to-End Workflows
+
+### 8.1 Primary journey: plan a trip
+
+1. The user opens PACK & GO.
+2. The user enters a destination, duration or dates, budget, interests, and travel preferences.
+3. The application validates the request and passes it to the backend planning endpoint.
+4. The AI workflow interprets the request and gathers relevant destination information.
+5. Weather and budget-related information are considered when the required integrations are available.
+6. The itinerary agent assembles a day-wise plan.
+7. A review/critic step evaluates the plan against the supplied constraints and requests refinement when supported.
+8. The backend returns the structured plan and relevant cost information.
+9. The frontend presents the plan in an interactive dashboard.
+10. The user reviews the result, requests changes, and saves the trip where persistence is enabled.
+
+```mermaid
+flowchart TD
+    A([Start]) --> B[Enter destination and trip details]
+    B --> C[Validate preferences and constraints]
+    C --> D{Required details available?}
+    D -- No --> E[Ask user to clarify details]
+    E --> B
+    D -- Yes --> F[Send planning request to backend]
+    F --> G[Interpret request and research destination]
+    G --> H[Gather weather and budget context]
+    H --> I[Generate day-wise itinerary]
+    I --> J[Review plan against constraints]
+    J --> K{Plan needs revision?}
+    K -- Yes --> L[Refine itinerary]
+    L --> J
+    K -- No --> M[Return itinerary and cost estimate]
+    M --> N[Display interactive trip dashboard]
+    N --> O{User wants changes?}
+    O -- Yes --> P[Update constraints or request revision]
+    P --> F
+    O -- No --> Q[Save or continue using the plan]
+    Q --> R([End])
+```
+
+### 8.2 Change a trip constraint
+
+When the traveller changes an important constraint—such as budget, trip length, or interests—the application should pass the updated information into the revision workflow. The plan should be updated or regenerated according to the available functionality. The revised result should be shown to the user for review rather than silently replacing their intent.
+
+### 8.3 Ask a contextual travel question
+
+1. The user submits a question in the knowledge or travel-assistance interface.
+2. The backend prepares the query for retrieval.
+3. The RAG pipeline searches the configured knowledge index for relevant content.
+4. Retrieved context is provided to the language model.
+5. The answer is returned to the interface, with source context or citations where supported.
+
+```mermaid
+flowchart TD
+    A[User asks a travel question] --> B[Prepare and embed query]
+    B --> C[Search vector knowledge store]
+    C --> D[Retrieve relevant chunks]
+    D --> E{Relevant context found?}
+    E -- Yes --> F[Build grounded prompt]
+    E -- No --> G[Handle insufficient context]
+    F --> H[Generate contextual answer]
+    G --> I[Explain limitation or provide configured fallback]
+    H --> J[Return answer and source references where available]
+    I --> J
+```
+
+### 8.4 Group trip coordination
+
+1. An authorized trip owner creates or opens a shared trip.
+2. The owner invites participants using the configured invitation mechanism.
+3. Participants accept the invitation and access the trip according to their permissions.
+4. Members review the shared itinerary and contribute proposals or comments where enabled.
+5. Members vote on proposed options and record decisions where the collaboration workflow supports it.
+6. The group uses shared checklists, chat, notifications, and expense tracking as available.
+
+```mermaid
+flowchart TD
+    A[Trip owner creates shared trip] --> B[Invite participants]
+    B --> C[Participant accepts invitation]
+    C --> D[Check identity and trip permissions]
+    D --> E{Authorized?}
+    E -- No --> F[Reject access]
+    E -- Yes --> G[Open shared trip workspace]
+    G --> H[Proposals and discussion]
+    H --> I[Voting and decision recording]
+    I --> J[Shared checklist and expense tracking]
+    J --> K[Updated group trip view]
+```
+
+## 9. AI Planning Architecture
+
+PACK & GO uses a coordinated workflow rather than treating travel planning as a single prompt. Specialized agents and tools divide the work into smaller responsibilities. The supervisor/workflow coordinates these steps and combines their results into the final response.
+
+### 9.1 Agent responsibilities
+
+| Agent or component | Responsibility |
+|---|---|
+| Supervisor / workflow | Interpret the request, coordinate the planning stages, and manage control flow |
+| Research agent | Gather destination and activity context using configured search or place tools |
+| Preference extractor | Identify relevant user constraints and preferences from the request |
+| Itinerary agent | Produce a structured day-wise plan |
+| Budget agent | Estimate or organize trip costs against the user’s spending limit |
+| Weather agent | Retrieve and interpret available weather information for trip planning |
+| Critic / review agent | Review the proposed plan against requirements and identify issues for refinement |
+| Knowledge agent | Support travel questions using retrieved knowledge context |
+| Tool layer | Provide operations such as place lookup, weather retrieval, currency conversion, and expense calculation |
+
+### 9.2 High-level architecture
+
+```mermaid
+flowchart TB
+    U[Traveller] --> UI[React Web Application]
+    UI --> API[FastAPI Backend]
+    API --> AUTH[Authentication and authorization]
+    API --> WF[AI Planning Workflow / Supervisor]
+    WF --> PREF[Preference Extraction]
+    WF --> RES[Destination Research Agent]
+    WF --> WEA[Weather Agent]
+    WF --> ITI[Itinerary Agent]
+    WF --> BUD[Budget Agent]
+    WF --> CRI[Critic / Refinement Agent]
+    WF --> KNO[Knowledge Agent]
+    RES --> TOOLS[Travel Tools and External Providers]
+    WEA --> TOOLS
+    BUD --> TOOLS
+    KNO --> RAG[RAG Retrieval Pipeline]
+    RAG --> VDB[(Vector Store)]
+    API --> DB[(Application Database)]
+    API --> MONGO[(Document / Knowledge Storage where configured)]
+    ITI --> WF
+    CRI --> WF
+    WF --> API
+    API --> UI
+```
+
+### 9.3 Planning workflow
+
+The planning workflow should preserve the user's original constraints as it gathers information and builds the itinerary. Research, weather, cost estimation, itinerary construction, and critique are separate responsibilities so that the workflow can be adjusted or extended. The final plan is returned in a structured form suitable for the frontend to display by day and activity.
+
+### 9.4 Constraint-aware itinerary generation
+
+The platform includes itinerary optimization approaches intended to help organize activities under constraints:
+
+- **Constraint Satisfaction Problem (CSP):** represents planning requirements as constraints and searches for an assignment that satisfies them.
+- **Genetic Algorithm (GA):** explores candidate itinerary arrangements and evolves candidates using a fitness measure.
+- **Route optimization:** supports improving the order of visits based on the information and constraints available to the route service.
+
+These techniques complement AI-generated suggestions. Their usefulness depends on the completeness and quality of the supplied locations, durations, costs, and constraints.
+
+## 10. Retrieval-Augmented Generation (RAG)
+
+RAG provides a way to answer questions using relevant information from a configured travel knowledge collection. It separates knowledge preparation from question answering.
+
+### 10.1 Knowledge ingestion
+
+1. Receive or select a supported knowledge source.
+2. Extract readable text from the source.
+3. Split the text into manageable chunks while preserving useful context.
+4. Generate embeddings for the chunks.
+5. Store vectors and associated metadata in the configured vector store.
+
+### 10.2 Query-time retrieval
+
+1. Receive a user's question.
+2. Convert the question into a retrieval representation.
+3. Search the vector store for relevant chunks.
+4. Assemble retrieved material into the model context.
+5. Generate a response based on the question and retrieved material.
+6. Return the answer and source information when available.
+
+```mermaid
+flowchart LR
+    subgraph Ingestion[Knowledge preparation]
+        A[Travel documents] --> B[Text extraction]
+        B --> C[Chunking]
+        C --> D[Embedding model]
+        D --> E[(Vector index)]
+    end
+    subgraph Query[Question answering]
+        F[User question] --> G[Query embedding]
+        G --> H[Similarity retrieval]
+        E --> H
+        H --> I[Relevant context]
+        I --> J[LLM answer generation]
+        J --> K[Answer and sources where available]
+    end
+```
+
+RAG quality depends on source quality, chunking, retrieval relevance, prompt design, and model behaviour. If relevant context is not available, the system should avoid implying that an answer is supported by a source that was not retrieved.
+
+## 11. Website Information Architecture and Feature Details
+
+The following sections describe the intended responsibilities of the main user-facing areas. Availability of individual functions depends on the configured application environment and integrations.
+
+### 11.1 Landing page
+
+Introduces PACK & GO, explains its travel-planning value, and directs users to discovery or planning entry points.
+
+### 11.2 Authentication
+
+Provides sign-in and account-related flows. Authentication configuration, callback URLs, and server-side token validation are required for protected actions.
+
+### 11.3 Profile and preferences
+
+Allows a traveller to manage profile information and reusable travel preferences. Preference data can be supplied to the planning workflow to reduce repeated input.
+
+### 11.4 AI planner
+
+Collects trip requirements and displays generated plans. The planner is the main entry point for submitting a request, reviewing the itinerary, inspecting cost information, and requesting revisions.
+
+### 11.5 Trips and trip details
+
+Organizes saved trips and presents the itinerary for a selected trip. Trip details can act as the central place for itinerary review and access to related trip tools.
+
+### 11.6 Explore and travel guide
+
+Supports destination discovery and place research. Available results depend on the connected data providers and their coverage.
+
+### 11.7 Group workspace
+
+Organizes participants and shared trip activity. Depending on enabled functionality, this area includes member management, invitations, proposals, voting, decisions, chat, checklists, and notifications.
+
+### 11.8 Expense manager
+
+Records travel expenses and presents summaries to help users understand spending. Currency and totals should be interpreted according to the currency and exchange-rate information available to the application.
+
+### 11.9 Trip journal
+
+Provides a space to preserve trip notes and memories associated with a trip.
+
+### 11.10 Travel utilities
+
+Groups supporting tools such as weather lookup, currency conversion, place information, route assistance, and packing or expense calculations where configured.
+
+### 11.11 Knowledge center
+
+Provides the user interface for travel knowledge sources and contextual question answering. Knowledge ingestion and retrieval depend on backend configuration and supported source formats.
+
+### 11.12 Administration
+
+Provides designated administrative views and knowledge-management actions for authorized users only.
+
+## 12. Group Travel Requirements
+
+Group travel introduces shared state and permission requirements in addition to ordinary trip planning.
+
+### 12.1 Membership and invitations
+
+- A trip owner can invite participants through the configured invitation flow.
+- Invitation acceptance must be validated by the backend.
+- Membership changes must respect the trip's access policy.
+- Shared resources must be scoped to the correct trip and authorized participants.
+
+### 12.2 Proposals, votes, and decisions
+
+- Members can submit proposals where permitted.
+- Voting actions must be associated with the correct proposal and authorized member.
+- The application should record the resulting decision or decision state.
+- The interface should clearly communicate proposal status and recorded outcomes.
+
+### 12.3 Shared communication and checklist
+
+- Members can access trip-related discussion where enabled.
+- Shared checklist items help coordinate preparation and tasks.
+- Notifications should communicate relevant collaboration events where configured.
+
+### 12.4 Shared expenses
+
+- Expense records should be associated with the correct trip.
+- Access and modification should follow membership permissions.
+- Summaries should make recorded costs understandable to the group.
+
+## 13. Data Requirements and Conceptual Model
+
+The application needs to associate user-owned information with the correct user and trip. The conceptual entities below describe the information domain rather than prescribing a single physical database implementation.
+
+| Entity | Purpose | Typical relationships |
+|---|---|---|
+| User | Identity, profile, and preferences | Owns trips and personal settings |
+| Trip | Destination, dates/duration, budget, and trip state | Belongs to an owner; may have members, itinerary items, expenses, and journal entries |
+| Itinerary item | Activity, place, day, timing, and estimated cost | Belongs to a trip or itinerary |
+| Trip member | Membership and role within a shared trip | Connects a user to a trip |
+| Invitation | Invitation state and acceptance information | Connects an invitee to a trip |
+| Proposal | Suggested activity or group option | Belongs to a trip and may have votes |
+| Vote / decision | Group choice and its recorded outcome | Relates to a proposal and trip participants |
+| Expense | Cost, category, date, and associated trip | Belongs to a trip and a recording user |
+| Checklist item | Preparation or coordination task | Belongs to a trip and may have completion state |
+| Journal entry | Trip note or memory | Belongs to a user and/or trip |
+| Knowledge source | Document or information source used by RAG | Produces chunks indexed in the vector store |
+| Knowledge chunk | Text segment and metadata used for retrieval | Belongs to a source and has an embedding/index entry |
+
+### Conceptual entity relationship diagram
+
+```mermaid
+erDiagram
+    USER ||--o{ TRIP : owns
+    USER ||--o{ TRIP_MEMBER : participates
+    TRIP ||--o{ TRIP_MEMBER : includes
+    TRIP ||--o{ ITINERARY_ITEM : contains
+    TRIP ||--o{ INVITATION : issues
+    TRIP ||--o{ PROPOSAL : contains
+    PROPOSAL ||--o{ VOTE : receives
+    TRIP ||--o{ EXPENSE : records
+    USER ||--o{ EXPENSE : records
+    TRIP ||--o{ CHECKLIST_ITEM : tracks
+    TRIP ||--o{ JOURNAL_ENTRY : contains
+    KNOWLEDGE_SOURCE ||--o{ KNOWLEDGE_CHUNK : produces
+```
+
+## 14. API and Integration Design
+
+The frontend communicates with the backend through HTTP APIs. The API layer validates requests, applies authentication and authorization where required, invokes business services or AI workflows, and returns structured responses.
+
+### 14.1 API responsibility groups
+
+| API group | Responsibility |
+|---|---|
+| Trips | Create, retrieve, update, and manage trip records and planning requests |
+| Users | Profile and preference operations |
+| Collaboration | Group membership, invitations, proposals, votes, decisions, and shared trip activity |
+| Expenses | Record and summarize trip expenses |
+| Journal | Manage trip journal entries |
+| Knowledge | Manage supported knowledge sources and ask contextual questions |
+| Utilities | Expose travel-related utility operations such as weather, currency, or place lookup |
+| Admin | Provide authorized administrative operations |
+
+### 14.2 External integrations
+
+The platform is designed to use configured external providers for language-model inference, embeddings, weather, place research, maps or routes, currency conversion, and authentication. The exact data available to the application depends on the selected provider, API credentials, usage limits, and network availability.
+
+### 14.3 Integration flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as React Frontend
+    participant API as FastAPI Backend
+    participant AI as Planning Workflow
+    participant Tools as Travel Providers
+    participant DB as Application Storage
+    User->>UI: Enter trip requirements
+    UI->>API: Submit validated request
+    API->>API: Authenticate and validate
+    API->>AI: Start planning workflow
+    AI->>Tools: Request research/weather/place data as needed
+    Tools-->>AI: Return available information
+    AI->>AI: Generate and review itinerary
+    AI-->>API: Return structured plan
+    API->>DB: Persist trip when requested/configured
+    API-->>UI: Return plan and status
+    UI-->>User: Display itinerary and budget summary
+```
+
+## 15. Technology Architecture
+
+The project is organized as a web application with a separate frontend and Python backend.
+
+| Layer | Technology / component | Responsibility |
+|---|---|---|
+| Frontend | React, Vite, CSS | Interactive pages, itinerary display, forms, and trip workspace |
+| API backend | Python, FastAPI | HTTP endpoints, request validation, authorization, and service orchestration |
+| AI orchestration | LangGraph-style workflow and specialized agents | Coordinate research, itinerary, budget, weather, review, and knowledge tasks |
+| Language-model access | Configured LLM provider | Interpret requests and generate planning or contextual responses |
+| RAG pipeline | Chunking, embeddings, retrieval, generation | Retrieve relevant travel knowledge for question answering |
+| Vector storage | ChromaDB or configured vector store | Store and retrieve embedded knowledge chunks |
+| Application persistence | Configured relational/document storage | Store users, trips, preferences, collaboration state, and related records |
+| Schema migration | Alembic where configured | Version and apply relational schema changes |
+| External data | Configured weather, place, map, and currency providers | Supply supporting travel information |
+| Testing | Python and frontend test tooling | Check core logic, APIs, and interface utilities |
+
+## 16. Security, Privacy, and Error Handling
+
+- Authentication must be validated before protected operations are performed.
+- Server-side authorization must enforce trip ownership, group membership, and administrative roles.
+- API keys, database credentials, and private tokens must be supplied through environment configuration and must not be committed to the repository.
+- User input should be validated before it reaches AI workflows, database operations, or external providers.
+- Errors from model providers and travel APIs should be handled without exposing credentials or internal stack traces to end users.
+- Personal and group trip information should not be exposed across unrelated users or trips.
+- External data such as weather, route information, and estimated prices may change and should be rechecked when necessary.
+- AI-generated itineraries and estimates are decision-support suggestions; travellers should verify time-sensitive information before relying on it.
+
+## 17. Constraints and Assumptions
+
+- The quality of recommendations depends on the completeness of the user’s input and the available destination information.
+- Weather, map, place, currency, and model features depend on configured external services and their availability.
+- Budget values are estimates unless based on verified live prices.
+- Route optimization depends on the locations, travel durations, and constraints available to the system.
+- RAG answers depend on the quality, coverage, and relevance of the indexed knowledge sources.
+- Group functionality requires reliable identity, membership, and permission checks.
+- Long-running AI operations may take time and should communicate progress where streaming is supported.
+
+## 18. Acceptance Criteria
+
+The initial MVP is considered demonstrable when the following core journey can be completed in the configured environment:
+
+1. A traveller can provide a destination, duration, budget, and interests.
+2. The application accepts the request and returns a structured itinerary.
+3. The itinerary is organized into understandable days and activities.
+4. The response includes cost information when sufficient data is available.
+5. Weather or destination context is incorporated when the required integration is available.
+6. The user can review the result and request a revision.
+7. The interface presents the generated plan in a coherent travel dashboard.
+
+The broader platform requirements can be evaluated separately for saved trips, RAG question answering, packing assistance, utilities, expense management, and group collaboration according to the corresponding integrations and flows enabled in the environment.
+
+## 19. Expected Impact
+
+PACK & GO aims to reduce the friction of travel planning by bringing personalized itinerary generation and practical trip organization into one experience. By combining AI planning with budget awareness, weather and destination context, supporting utilities, and collaboration, the platform helps travellers move from a broad idea to a plan they can review, adjust, and use.
+
+The key value is not simply generating a list of places. It is coordinating the information and constraints that make a trip more realistic: **where to go, what to do, when to do it, how much it may cost, what to prepare, and how to adapt the plan when requirements change.**
