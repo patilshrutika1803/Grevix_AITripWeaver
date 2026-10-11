@@ -1,4 +1,4 @@
-# PACK & GO — AI-Powered Smart Travel Planning Platform
+# Grevix AI Trip Weaver (PACK & GO) — AI-Powered Smart Travel Planning Platform
 
 > **Grevix AfterCode | PACK & GO (Grevix AI Trip Weaver)**
 
@@ -15,7 +15,7 @@ The project was built for **Grevix AfterCode**. Its original hackathon vision an
 [![LangGraph](https://img.shields.io/badge/AI-LangGraph-1C3C3C)](https://www.langchain.com/langgraph)
 [![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/auth)
 
-**Contents:** [Overview](#overview) · [Demo walkthrough](#demo-walkthrough) · [Feature status](#feature-status) · [Problem and vision](#1-hackathon-problem-statement-project-vision) · [Challenge 2](#43-challenge-2-completed-work) · [Architecture](#9-ai-planning-architecture) · [RAG](#10-retrieval-augmented-generation-rag) · [Feedback](#user-feedback-and-improvements) · [Setup](#local-setup-and-environment-configuration) · [Deployment](#deployment) · [Limitations](#known-limitations)
+**Contents:** [Overview](#overview) · [Demo walkthrough](#demo-walkthrough) · [Feature status](#feature-status) · [Problem and vision](#1-hackathon-problem-statement-project-vision) · [Challenge Cards](#4-scope) · [Build / Decision Log](#build-and-decision-log) · [Architecture](#9-ai-planning-architecture) · [RAG](#10-retrieval-augmented-generation-rag) · [Feedback](#user-feedback-and-improvements) · [Setup](#local-setup-and-environment-configuration) · [Deployment](#deployment) · [Final checklist](#final-submission-checklist) · [Limitations](#known-limitations)
 
 ## Overview
 
@@ -95,7 +95,7 @@ The Phase 1 vision was to coordinate several planning steps rather than return a
 4. Review and refine the plan against the traveller's requirements.
 5. Use RAG to provide contextual travel assistance from relevant knowledge.
 
-Within the original 24-hour hackathon, the MVP objective was to demonstrate AI itinerary generation, personalized travel recommendations, budget and weather integration, and an interactive travel dashboard. These goals describe the registration idea; Section 4.3 records Challenge 2 work verified in this repository. The requirements and workflows in this SRS describe intended behavior and should not, by themselves, be read as proof that every feature or external integration is enabled.
+Within the original 24-hour hackathon, the MVP objective was to demonstrate AI itinerary generation, personalized travel recommendations, budget and weather integration, and an interactive travel dashboard. These goals describe the registration idea; Section 4.4 records Challenge 2 work verified in this repository. The requirements and workflows in this SRS describe intended behavior and should not, by themselves, be read as proof that every feature or external integration is enabled.
 
 ## 2. Proposed Solution
 
@@ -144,7 +144,15 @@ The proposed experience is organized around five principles:
 - Group trip invitations, members, proposals, voting, decisions, chat, and shared checklists.
 - Trip journal and administrative knowledge-management functions.
 
-### 4.3 Challenge 2 — Completed Work
+### 4.3 Challenge Card 1 — Initial MVP
+
+The repository does not contain the official Challenge Card 1 prompt, so this section records the initial project objective documented in the submission rather than presenting it as a verbatim card. The original 24-hour MVP scope was a personalized, day-wise travel planner combining destination research, budget and weather context, itinerary review, and a travel dashboard, with contextual RAG assistance in the broader workflow.
+
+The initial submission commit [`8c76b21`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/8c76b21) contains the React frontend, FastAPI backend, LangGraph planning agents, and RAG modules. It is the earliest tracked state, so the repository cannot establish a before/after change from an earlier Card 1 build. At that baseline, the implementation separates preference extraction, research, weather, budget, itinerary generation, and critique rather than treating planning as one opaque generation step. The trade-off is that external data and model calls remain provider-dependent; estimates and generated recommendations are not guaranteed live facts. See [Problem Statement & Project Vision](#1-hackathon-problem-statement-project-vision), [AI Planning Architecture](#9-ai-planning-architecture), and [Feature Status](#feature-status) for the intended scope and current implementation boundaries.
+
+### 4.4 Challenge Card 2: Completed Work
+
+The official Challenge Card 2 prompt is not stored in the repository. The following account therefore describes the evidence-backed work recorded for this stage, not a quotation of the card objective. The repository history shows a shift toward making the existing travel workspace more resilient and deployment-ready: selected trip snapshots can be saved locally, authentication/API routing was hardened, and production response contracts were corrected. Feedback screenshots were reviewed separately below; the repository does not establish that each suggestion was implemented as a result of that feedback.
 
 The following entries are ordered by the confirmed Git history. These Challenge 2 changes improve reliability and access to existing features; they do not imply that every external provider is configured.
 
@@ -652,6 +660,10 @@ The root `.env.example` is a placeholder reference for configuration; supply loc
 
 The Vite development configuration reads the repository-root environment and proxies the health, planning, and `/api/v1` requests to the local FastAPI service. Frontend test/build/lint scripts are declared in `frontend/package.json`. Backend tests use Pytest from the repository root; Pytest is not a runtime dependency in `requirements.txt`, so install it separately in a development environment if needed.
 
+### 15.4 Development tools and AI coding assistants
+
+The tracked project configuration and scripts establish Git for version history, npm/Node.js for frontend development and tests, and Python/Pytest for backend development and tests. These are development tools, separate from the services and libraries integrated into the application above. The repository does not identify which AI coding assistant(s), if any, were used during the original project development; that detail is left unclaimed pending confirmation.
+
 ## 16. Security, Privacy, and Error Handling
 
 - Authentication must be validated before protected operations are performed.
@@ -708,7 +720,7 @@ Phase 3 work recorded here is documentation and evidence review. This README upd
 
 | Phase 3 item | Verified state | User/judge impact |
 |---|---|---|
-| README and feedback review (this documentation update) | Adds the live demo/repository links, actual route-based walkthrough, implementation/dependency status, test results, and links to all 17 supplied screenshots. Feedback themes were checked against the current UI and repository history. | Makes the difference between the project vision, existing functionality, provider-dependent behavior, and open suggestions easier to assess. |
+| Final-submission README audit (this documentation update) | Adds the backend deployment and point-in-time health results, reconstructs the build/decision timeline from Git, distinguishes repository evidence from unavailable card/tool details, and adds a deliverables checklist and feedback-folder link with a privacy caution. Existing feature, setup, test, and deployment notes are retained. | Makes it easier to assess what is implemented, what was verified, what remains dependent on configuration, and what needs team confirmation. |
 | Existing UI behavior checked; not attributed to new work | Explore destination cards link into planning, but landing-page feature cards are static articles. The place-detail close control is in the modal header below its photo, not over the photo. Responsive CSS and hover/focus styles exist, but the requested mobile and interactive-affordance changes have not been verified as complete. | Records specific usability gaps rather than presenting suggestions as fixed. |
 | Missing-weather state checked; not fixed | `PlanCard` currently falls back to “Good conditions” when `weather.conditions` is absent. No weather-label change is claimed. | Avoids confusing missing forecast data with a positive forecast; correcting the label remains a follow-up. |
 
@@ -721,11 +733,26 @@ Phase 3 work recorded here is documentation and evidence review. This README upd
 | `npm test` (`frontend/`) | 34 tests total: 32 passed and 2 failed in `tests/offline-vault-page.test.js`. Both failures stem from an assertion expecting `/Updated /` while the UI renders “Last updated …”; the frontend suite is not fully green. |
 | `python -m pytest -q` (repository root, project virtual environment) | 143 passed, 45 failed, 73 errors, and 2 warnings. The backend suite is not green; failures and setup/runtime errors require separate triage. |
 
-The live demo and GitHub repository URLs resolve, and the feedback links below match the 17 files in `FEEDBACK/`. This review did not verify account creation, Supabase email callbacks, live itinerary generation, external-provider responses, database persistence, or RAG behavior against production credentials; those still require a configured, end-to-end manual check.
+The live service check and its scope are recorded under [Deployment](#deployment). This verifies reachability/readiness, not a complete user journey. Account creation, Supabase email callbacks, live itinerary generation, external-provider responses, trip persistence through the UI, and RAG behavior were not verified end to end against production credentials.
+
+## Build and Decision Log
+
+This concise timeline is reconstructed from the Git commit order and repository documentation. All listed commits are dated 2026-10-11; Git establishes their order, not exact work times, milestone hours, or the elapsed 24-hour schedule.
+
+| Sequence | Evidence | Build milestone and decision |
+|---|---|---|
+| Initial submission | [`8c76b21`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/8c76b21) | Established the project baseline: a React/FastAPI application with LangGraph planning agents and RAG modules. The original MVP scope focuses on itinerary planning with preferences, budget/weather context, and destination research. |
+| Requirements and architecture documentation | [`37d6f9a`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/37d6f9a), [`e585326`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/e585326) | Added and refined the problem statement, SRS, and architecture diagrams. The documents preserve the wider product vision, while the feature-status table distinguishes that vision from implemented and provider-dependent behavior. |
+| Challenge 2 resilience and production hardening | [Challenge 2 commits](#44-challenge-card-2-completed-work) | Added the local Offline Vault and then improved snapshot recovery, freshness/error handling, production auth callbacks, SPA routing, and API response contracts. The design deliberately caches selected snapshots/app-shell assets rather than authenticated API traffic; offline changes are not synchronized. |
+| Final evidence and documentation review | [`3f248f2`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/3f248f2) | Recorded feature limitations, test results, and feedback evidence. The current README adds a concise submission checklist and identifies details that cannot be established from repository evidence. |
+
+**Constraints and lessons recorded in the project:** provider keys, network availability, and persistent storage affect integrations; generated costs and plans need traveller verification; a local trip snapshot is not offline API access; and feedback suggestions should remain labelled as open unless an implementation is evidenced. The official wording of both Challenge Cards, exact decision rationale beyond the commit/documentation record, and development-time AI assistant(s) are not in tracked files and should be supplied by the team if needed for the submission.
 
 ## User Feedback and Improvements
 
-The 17 supplied screenshots were reviewed and grouped into positive product themes, usability suggestions, and future requests. Each suggestion was checked against current source and the confirmed Challenge 2 history before assigning a status. The screenshots are qualitative evidence only: this summary does not infer user identities, quotes, counts, representativeness, or that every person tried every feature.
+The [FEEDBACK folder in the public GitHub repository](https://github.com/patilshrutika1803/Grevix_AITripWeaver/tree/main/FEEDBACK) contains 17 screenshots of feedback conversations. They were reviewed and grouped into positive product themes, usability suggestions, and future requests; each suggestion was checked against current source and the confirmed Challenge 2 history before assigning a status. The repository does not record who collected the feedback, when it was collected, how many people participated, or whether every comment came from a hands-on product trial, so no such claims are made. The screenshots are qualitative evidence only: this summary does not infer user identities, quotes, counts, representativeness, or that every person tried every feature. No application-code change in the repository can be attributed specifically to these comments; features described as “already existed” predate this review, and the suggestions marked planned or pending remain open.
+
+The screenshots may include personal identifiers and private conversation content. Confirm consent or redact the images before public submission if needed; this README summarizes themes without reproducing chat text or identifying people.
 
 **Status labels:** **Implemented and verified** means the corresponding behavior is present in source and has a relevant passing test or code-path verification; **Already existed and was retained** means the feedback describes an existing feature rather than new work; **In progress / pending verification** means there is related functionality but the requested outcome is not confirmed; **Planned for a future version** means the suggestion is not implemented.
 
@@ -755,28 +782,6 @@ The 17 supplied screenshots were reviewed and grouped into positive product them
 | Discover hidden gems and lesser-known local places | Planned for a future version | Explore currently shows a small curated destination set; hidden-gem discovery is not implemented. |
 | Add travel-safety information, emergency contacts, or location sharing | Planned for a future version | These safety features are not present. Any future location-sharing design would need explicit consent and privacy controls. |
 | Plan together through group collaboration/chat | Already existed and was retained | Authorized group trips already include invitations, roles, proposals/voting, decisions, checklists, chat, notifications, and expenses. The screenshots’ suggestion is not treated as a new feature request still awaiting implementation. |
-
-### Screenshot index
-
-| Screenshot | Evidence |
-|---|---|
-| 1 | [Open screenshot](FEEDBACK/Image%20%281%29.jpg) |
-| 2 | [Open screenshot](FEEDBACK/Image%20%282%29.jpg) |
-| 3 | [Open screenshot](FEEDBACK/Image%20%283%29.jpg) |
-| 4 | [Open screenshot](FEEDBACK/Image%20%284%29.jpg) |
-| 5 | [Open screenshot](FEEDBACK/Image%20%285%29.jpg) |
-| 6 | [Open screenshot](FEEDBACK/Image%20%286%29.jpg) |
-| 7 | [Open screenshot](FEEDBACK/Image%20%287%29.jpg) |
-| 8 | [Open screenshot](FEEDBACK/Image%20%288%29.jpg) |
-| 9 | [Open screenshot](FEEDBACK/Image%20%289%29.jpg) |
-| 10 | [Open screenshot](FEEDBACK/Image%20%2810%29.jpg) |
-| 11 | [Open screenshot](FEEDBACK/Image%20%2811%29.jpg) |
-| 12 | [Open screenshot](FEEDBACK/Image%20%2812%29.jpg) |
-| 13 | [Open screenshot](FEEDBACK/Image%20%2813%29.jpg) |
-| 14 | [Open screenshot](FEEDBACK/Image%20%2814%29.jpg) |
-| 15 | [Open screenshot](FEEDBACK/Image%20%2815%29.jpg) |
-| 16 | [Open screenshot](FEEDBACK/Image%20%2816%29.jpg) |
-| 17 | [Open screenshot](FEEDBACK/Image%20%2817%29.jpg) |
 
 ## Local Setup and Environment Configuration
 
@@ -816,11 +821,31 @@ python -m pytest
 
 ## Deployment
 
-The documented deployment target is a Vite frontend on Vercel with `frontend/` as the project root, `npm run build` as the build command, and `dist/` as the output directory. `frontend/vercel.json` rewrites client-side routes to the SPA entry point. This is a deployment guide, not evidence that every hosting variable or backend integration is configured.
+- **Live frontend:** [https://grevix-ai-trip-weaver.vercel.app/](https://grevix-ai-trip-weaver.vercel.app/)
+- **Backend service:** [https://grevix-aitripweaver.onrender.com](https://grevix-aitripweaver.onrender.com) · [health](https://grevix-aitripweaver.onrender.com/health) · [readiness](https://grevix-aitripweaver.onrender.com/health/ready)
+- **Public source repository:** [patilshrutika1803/Grevix_AITripWeaver](https://github.com/patilshrutika1803/Grevix_AITripWeaver)
 
-The documented backend target is a Render Web Service from the repository root, using Python 3.12, `pip install -r requirements.txt`, and `uvicorn main:app --host 0.0.0.0 --port $PORT`; the readiness endpoint is `/health/ready`. Configure the real backend origin as frontend `VITE_API_BASE_URL` and allow the frontend origin through backend `PACK_GO_ALLOWED_ORIGINS`. Configure Supabase callback URLs for the deployed frontend and provide the required MongoDB and Supabase values to the backend only. Provider keys and persistent storage for local RAG/vector data are needed only for those enabled integrations.
+**Deployment architecture:** Vercel serves the Vite/React single-page frontend. The browser calls the separate FastAPI service on Render using `VITE_API_BASE_URL`; Supabase Auth supplies browser sessions and bearer tokens, and MongoDB stores application data. ChromaDB and uploaded RAG files use configured local/persistent storage rather than MongoDB; persistent production vector/file storage is conditional on a Render disk and was not verified. The API and provider-backed features require their corresponding server environment variables and external services.
 
-The production frontend is [grevix-ai-trip-weaver.vercel.app](https://grevix-ai-trip-weaver.vercel.app/). Refer to [PRODUCTION_ENVIRONMENT.md](docs/PRODUCTION_ENVIRONMENT.md) for the detailed, environment-specific deployment instructions. No deployment was performed for this README change.
+On 2026-10-11, the frontend returned its application page, backend `/health` returned `{"status":"ok"}`, and `/health/ready` returned `{"status":"ready","database":"connected"}`. This is a point-in-time reachability/readiness check, not proof of end-to-end authentication, AI generation, provider calls, RAG, or every frontend feature. No deployment was performed for this README change.
+
+The documented Vercel configuration uses `frontend/` as the project root, `npm run build` as the build command, and `dist/` as the output directory; `frontend/vercel.json` rewrites client-side routes to the SPA entry point. The documented Render target uses the repository root, Python 3.12, `pip install -r requirements.txt`, and `uvicorn main:app --host 0.0.0.0 --port $PORT`; `/health/ready` is its readiness endpoint. Refer to [PRODUCTION_ENVIRONMENT.md](docs/PRODUCTION_ENVIRONMENT.md) for detailed settings and required callback/origin configuration.
+
+The placeholder environment variable names and local run commands are documented in [Local Setup and Environment Configuration](#local-setup-and-environment-configuration) and `.env.example`. Do not put secrets in the README or frontend configuration; Vite `VITE_` values are public in the built browser assets.
+
+## Final Submission Checklist
+
+- [x] Project name and concise description.
+- [x] Problem, intended users, solution, value proposition, and end-to-end journey.
+- [x] Live frontend and backend URLs, with the exact scope of the health/readiness verification stated.
+- [x] Public GitHub repository and local setup/environment-variable instructions using placeholders.
+- [x] Application technologies, AI workflow/agents, external dependencies, and deployment architecture documented from project files.
+- [x] Feedback themes, the 17-image evidence folder, implemented-versus-open status, and a privacy caution documented.
+- [x] Build / Decision Log added from repository history and existing project documentation.
+- [x] Evidence links provided for the initial submission, Challenge 2 commits, feedback folder, and live service checks.
+- [ ] Challenge Card evolution: repository-based account is included, but the official wording/objectives for both cards need team confirmation.
+- [ ] Development AI coding assistant(s): not identifiable from tracked project files; add the actual tool names if used.
+- [ ] Public feedback evidence: confirm consent or redact personal identifiers/private conversation content in `FEEDBACK/` before submission.
 
 ## Known Limitations
 
