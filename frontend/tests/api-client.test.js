@@ -26,11 +26,17 @@ test('API client uses the configured backend origin and no legacy token storage'
         identities: [],
       }), { status: 200 })
     }
+    if (url === 'https://api.example.test/api/v1/trips/trip-123/journal') {
+      return new Response(JSON.stringify({
+        error: 'Request validation failed.',
+        validation_errors: [{ field: 'media_references', message: 'Media references must be absolute HTTP or HTTPS URLs.' }],
+      }), { status: 422 })
+    }
     return new Response(JSON.stringify({ notifications: [] }), { status: 200 })
   }
 
   try {
-    const { notificationsApi, apiUrl } = await import('../src/api/client.js')
+    const { notificationsApi, journalApi, apiUrl } = await import('../src/api/client.js')
     const { getSupabaseClient } = await import('../src/auth/supabase.js')
     const accessToken = [
       Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url'),
@@ -44,6 +50,20 @@ test('API client uses the configured backend origin and no legacy token storage'
     assert.equal(error, null)
     assert.equal(apiUrl('/plan/stream'), 'https://api.example.test/plan/stream')
     assert.deepEqual(await notificationsApi.list(), { notifications: [] })
+    const journalPayload = {
+      title: null,
+      content: 'A note submitted by the journal editor.',
+      occurred_at: '2026-10-11T14:05:00.000Z',
+      media_references: [],
+    }
+    await assert.rejects(
+      journalApi.create('trip-123', journalPayload),
+      /Request validation failed\. media_references: Media references must be absolute HTTP or HTTPS URLs\./,
+    )
+    const journalCall = calls.find((call) => call.url === 'https://api.example.test/api/v1/trips/trip-123/journal')
+    assert.ok(journalCall)
+    assert.equal(journalCall.options.method, 'POST')
+    assert.deepEqual(JSON.parse(journalCall.options.body), journalPayload)
     const backendCall = calls.find((call) => call.url === 'https://api.example.test/api/v1/notifications')
     assert.ok(backendCall)
     assert.equal(backendCall.options.headers.Authorization, `Bearer ${accessToken}`)

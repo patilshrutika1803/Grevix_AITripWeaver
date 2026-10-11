@@ -79,7 +79,16 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
     if request.url.path.startswith("/api/v1/users/me/preferences"):
         return JSONResponse(status_code=422, content={"error": "Unable to save your preferences. Please check the submitted values."})
-    return JSONResponse(status_code=422, content={"error": "Request validation failed."})
+    content = {"error": "Request validation failed."}
+    if request.method == "POST" and request.url.path.startswith("/api/v1/trips/") and request.url.path.endswith("/journal"):
+        content["validation_errors"] = [
+            {
+                "field": ".".join(str(part) for part in error.get("loc", ()) if part != "body") or "request",
+                "message": error["msg"],
+            }
+            for error in exc.errors()
+        ]
+    return JSONResponse(status_code=422, content=content)
 
 
 @app.exception_handler(Exception)

@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class TripCreateRequest(BaseModel):
@@ -54,6 +54,7 @@ class TripResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    is_group: bool = False
     title: str
     destination: str
     duration: int
@@ -228,6 +229,17 @@ class ExpenseSummaryResponse(BaseModel):
     settlements: list[ExpenseSettlement]
 
 
+def _validate_journal_media_references(references: list[str]) -> list[str]:
+    from urllib.parse import urlsplit
+
+    normalized = [reference.strip() for reference in references]
+    for reference in normalized:
+        parsed = urlsplit(reference)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError("Media references must be absolute HTTP or HTTPS URLs.")
+    return normalized
+
+
 class JournalEntryCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     title: str | None = Field(default=None, max_length=255)
@@ -235,20 +247,18 @@ class JournalEntryCreateRequest(BaseModel):
     occurred_at: datetime | None = None
     media_references: list[str] = Field(default_factory=list, max_length=10)
 
+    @field_validator("media_references")
+    @classmethod
+    def validate_media_references(cls, references: list[str]) -> list[str]:
+        return _validate_journal_media_references(references)
+
     @model_validator(mode="after")
     def validate_journal_content_and_media(self):
-        from urllib.parse import urlsplit
-
         self.content = self.content.strip()
         if not self.content:
             raise ValueError("Journal content must not be empty.")
         if self.title is not None:
             self.title = self.title.strip() or None
-        for reference in self.media_references:
-            parsed = urlsplit(reference.strip())
-            if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
-                raise ValueError("Media references must be absolute HTTP or HTTPS URLs.")
-        self.media_references = [reference.strip() for reference in self.media_references]
         return self
 
 
@@ -259,10 +269,13 @@ class JournalEntryUpdateRequest(BaseModel):
     occurred_at: datetime | None = None
     media_references: list[str] | None = Field(default=None, max_length=10)
 
+    @field_validator("media_references")
+    @classmethod
+    def validate_media_references(cls, references: list[str] | None) -> list[str] | None:
+        return _validate_journal_media_references(references) if references is not None else None
+
     @model_validator(mode="after")
     def validate_requested_fields(self):
-        from urllib.parse import urlsplit
-
         if not self.model_fields_set:
             raise ValueError("At least one field must be provided.")
         if "content" in self.model_fields_set and self.content is None:
@@ -277,12 +290,6 @@ class JournalEntryUpdateRequest(BaseModel):
                 raise ValueError("Journal content must not be empty.")
         if self.title is not None:
             self.title = self.title.strip() or None
-        if self.media_references is not None:
-            for reference in self.media_references:
-                parsed = urlsplit(reference.strip())
-                if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
-                    raise ValueError("Media references must be absolute HTTP or HTTPS URLs.")
-            self.media_references = [reference.strip() for reference in self.media_references]
         return self
 
 
@@ -390,6 +397,7 @@ class PreferenceResponse(PreferenceUpdateRequest):
     food_preference: str | None = None
     id: str
     user_id: str
+    updated_at: datetime | None = None
 
 
 class TripGroupCreateRequest(BaseModel):

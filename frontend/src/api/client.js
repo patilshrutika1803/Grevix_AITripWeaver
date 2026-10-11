@@ -40,12 +40,16 @@ async function request(path, options = {}) {
   const body = await response.json().catch(() => ({}))
   if (!response.ok) {
     const detail = body.detail || body.error
+    const validationDetails = Array.isArray(body.validation_errors)
+      ? body.validation_errors.map(({ field, message }) => `${field}: ${message}`).join('; ')
+      : ''
     const message = path.startsWith('/users/me/preferences') && response.status === 422
       ? PREFERENCE_VALIDATION_ERROR
       : path.startsWith('/users/me/preferences') && !detail
         ? PREFERENCE_ERROR
         : detail || 'Something went wrong. Please try again.'
     const apiError = new Error(message)
+    if (validationDetails) apiError.message = `${message} ${validationDetails}`
     apiError.status = response.status
     throw apiError
   }
