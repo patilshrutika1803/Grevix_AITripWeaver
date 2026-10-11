@@ -1,16 +1,16 @@
-# PACK & GO — AI-Powered Smart Travel Planning Platform
+# PACK & GO – AI-Powered Smart Travel Planning Platform
 
 > **Grevix AfterCode | Problem Statement & Software Requirements Specification (SRS)**
 
-PACK & GO is an AI-powered travel planning platform designed to make trip planning more personalized, organized, and practical. Instead of relying on a single AI-generated itinerary, the platform combines itinerary generation with budget planning, weather information, maps, travel research, packing assistance, expense management, and contextual travel support.
+PACK & GO is an AI-powered travel planning platform designed to make trip planning more personalized, organized, and practical. Instead of relying on a single generic AI-generated itinerary, the project brings itinerary generation together with budget planning, weather information, place research and map links, packing assistance, expense management, and contextual travel support.
 
-The system uses an AI-driven workflow to understand user preferences, research the destination, consider weather and budget constraints, generate an itinerary, and refine the plan based on user requirements. Retrieval-Augmented Generation (RAG) is used to provide context-aware travel assistance from relevant travel knowledge.
+The original Phase 1 hackathon registration idea described a workflow that understands user preferences, researches the destination, considers weather and budget constraints, generates an itinerary, and refines the plan based on user requirements. Retrieval-Augmented Generation (RAG) was included in the project vision for context-aware assistance grounded in relevant travel knowledge.
 
-The initial build focuses on demonstrating a functional minimum viable product (MVP) for AI-powered itinerary generation, personalized travel recommendations, budget and weather integration, and an interactive travel dashboard. The platform is designed to support further enhancements as new requirements are introduced during the hackathon.
+The original 24-hour hackathon MVP goals were AI-powered itinerary generation, personalized recommendations, budget and weather integration, and an interactive travel dashboard. These are the registered goals, not a claim that every proposed integration or capability is complete. This README preserves that original context and separately identifies Phase 2 capabilities verified in the repository.
 
 ---
 
-## 1. Problem Statement
+## 1. Hackathon Problem Statement & Project Vision
 
 Planning a trip often requires travellers to move between multiple disconnected tools to research destinations, compare attractions, estimate costs, check weather, arrange daily activities, prepare packing lists, and coordinate with other travellers. This process is time-consuming and can result in unrealistic schedules, overlooked constraints, inconsistent information, and budgets that are difficult to manage.
 
@@ -39,6 +39,18 @@ Generic itinerary generators may return a list of popular places without suffici
 | Context gaps in AI answers | Generic answers may miss relevant travel information | Retrieve relevant knowledge before generating contextual responses |
 | Group coordination overhead | Choices, tasks, and expenses can become difficult to track | Provide shared trip collaboration features |
 
+### 1.3 Original Phase 1 workflow and 24-hour MVP
+
+The Phase 1 vision was to coordinate several planning steps rather than return a single generic itinerary:
+
+1. Understand the traveller's destination, dates or duration, interests, budget, and travel preferences.
+2. Research relevant destinations and activities.
+3. Consider budget and weather constraints while assembling a day-wise itinerary.
+4. Review and refine the plan against the traveller's requirements.
+5. Use RAG to provide contextual travel assistance from relevant knowledge.
+
+Within the original 24-hour hackathon, the MVP objective was to demonstrate AI itinerary generation, personalized travel recommendations, budget and weather integration, and an interactive travel dashboard. These goals describe the registration idea; Section 4.3 records the additional Phase 2 work verified in this repository. The requirements and workflows in this SRS describe intended behavior and should not, by themselves, be read as proof that every feature or external integration is enabled.
+
 ## 2. Proposed Solution
 
 PACK & GO provides a unified travel workspace. A user enters a destination, travel dates or duration, budget, interests, travel style, and other preferences. The planning workflow uses this context to research the destination, consider weather and budget constraints, generate a day-by-day itinerary, estimate expenses, and refine the result. The traveller can review the plan, request changes, save the trip, and use supporting travel tools from the same platform.
@@ -64,7 +76,7 @@ The proposed experience is organized around five principles:
 
 ## 4. Scope
 
-### 4.1 Core scope for the initial MVP
+### 4.1 Core scope for the original Phase 1 MVP
 
 - Travel request and preference collection.
 - AI-assisted itinerary generation.
@@ -85,6 +97,16 @@ The proposed experience is organized around five principles:
 - RAG-powered travel knowledge and contextual Q&A.
 - Group trip invitations, members, proposals, voting, decisions, chat, and shared checklists.
 - Trip journal and administrative knowledge-management functions.
+
+### 4.3 Phase 2 implementation verified in the repository
+
+| Area | What is implemented | User problem addressed and experience |
+|---|---|---|
+| Offline Travel Vault | An authenticated Offline Vault lists locally saved trips. From an online trip detail page, a user can choose **Save for Offline**; the app stores a trip snapshot in browser IndexedDB and can load that snapshot when the trip API request is unavailable. | Keeps a saved itinerary and its available trip details accessible on the same device during a connection loss. The Vault shows the saved time and the trip details available in the snapshot; it does not synchronize changes made while offline. |
+| Offline trip snapshots and freshness | A trip snapshot includes available itinerary, budget, date, preference, review, and weather data; separate weather and place snapshots are created only when those data are present. Records track save/update timestamps. Freshness rules define time-to-live values of 6 hours for weather, 30 days for guides, and 7 days for places and routes; trip snapshots have no expiry. The Vault currently surfaces a fresh/stale label for weather. | Helps travellers understand what trip context is stored locally and whether cached weather may need checking again. Guide and route record types exist in storage, but this trip-save flow does not populate them. |
+| PWA shell and offline behavior | The frontend includes a web app manifest and registers a service worker in production builds. The worker attempts to precache the application shell, uses a network-first strategy for navigations with the cached app shell as a fallback when available, and caches eligible same-origin static assets. API and other backend requests are excluded from its cache rules. | Allows the application shell and cached static resources to open without a network connection after they have been cached. The fallback is the app shell, not a separate offline page; live API-backed features remain unavailable offline. |
+| Supabase authentication and MongoDB setup | The frontend uses Supabase Auth with a public anonymous key and persisted browser sessions. The backend validates bearer tokens through Supabase and maintains user profiles in MongoDB. MongoDB configuration is explicit, connection initialization pings the server and creates indexes, and connection failures are surfaced with sanitized messages. | Makes the authentication and application-data configuration explicit and avoids presenting a failed database connection as a successful operation. Access to saved trips still depends on online authentication and backend access; locally saved snapshots are a separate read-only fallback. |
+| Tests and developer configuration | `.env.example` provides placeholder variable names for backend, frontend, provider, and RAG/storage configuration. Vite is configured to load the repository-root environment and proxy the local health, planning, and API paths. The repository includes focused frontend tests for offline storage, snapshots and freshness, plus backend tests for Supabase auth and MongoDB configuration. | Gives contributors a non-secret configuration reference and automated checks around the new offline and backend configuration behavior. Test files are present; this README does not claim a test-run result. |
 
 ## 5. Stakeholders and User Roles
 
@@ -548,18 +570,37 @@ sequenceDiagram
 
 The project is organized as a web application with a separate frontend and Python backend.
 
+### 15.1 Source structure
+
+| Area | Repository path | Responsibility |
+|---|---|---|
+| Frontend | `frontend/src/` | React pages, reusable components, API client, authentication, and offline trip storage |
+| HTTP API | `api/v1/` | FastAPI route groups for trips, users, collaboration, expenses, journal, knowledge, utilities, and administration |
+| AI workflow | `agent/` | Planning supervisor and specialized preference, research, weather, budget, itinerary, critic, and knowledge agents |
+| Services and tools | `services/`, `tools/` | Trip and collaboration behavior, itinerary/route algorithms, expenses, and external travel utilities |
+| RAG | `rag/` | Knowledge ingestion, chunking, embeddings, retrieval, and response generation |
+| Data and migrations | `database/`, `models/`, `alembic/` | Database access, data models, and relational migration support |
+| Tests | `tests/`, `frontend/tests/` | Backend Python tests and frontend Node.js tests |
+
+### 15.2 Technology stack
+
 | Layer | Technology / component | Responsibility |
 |---|---|---|
-| Frontend | React, Vite, CSS | Interactive pages, itinerary display, forms, and trip workspace |
-| API backend | Python, FastAPI | HTTP endpoints, request validation, authorization, and service orchestration |
-| AI orchestration | LangGraph-style workflow and specialized agents | Coordinate research, itinerary, budget, weather, review, and knowledge tasks |
-| Language-model access | Configured LLM provider | Interpret requests and generate planning or contextual responses |
-| RAG pipeline | Chunking, embeddings, retrieval, generation | Retrieve relevant travel knowledge for question answering |
-| Vector storage | ChromaDB or configured vector store | Store and retrieve embedded knowledge chunks |
-| Application persistence | Configured relational/document storage | Store users, trips, preferences, collaboration state, and related records |
-| Schema migration | Alembic where configured | Version and apply relational schema changes |
-| External data | Configured weather, place, map, and currency providers | Supply supporting travel information |
-| Testing | Python and frontend test tooling | Check core logic, APIs, and interface utilities |
+| Frontend | React 19, React Router, Vite 8, JavaScript, and CSS | Interactive pages, itinerary display, forms, and trip workspace |
+| API backend | Python 3.12+, FastAPI, and Pydantic | HTTP endpoints, request validation, authorization, and service orchestration |
+| AI orchestration | LangGraph workflow and specialized agents | Coordinate research, itinerary, budget, weather, review, and knowledge tasks |
+| Language-model and travel integrations | Configured Groq/Gemini and travel-data providers | Generate planning responses and supply available place, weather, and currency data |
+| RAG and vector storage | Chunking, sentence-transformer embeddings, retrieval, generation, and ChromaDB | Retrieve relevant travel knowledge for question answering |
+| Application data and authentication | MongoDB and Supabase Auth | Store application records and verify user identity |
+| Relational data tooling | SQLAlchemy and Alembic | Relational database access and schema migration support included in the repository |
+| Maps and routes | OpenStreetMap search links and route-optimization utilities | Open place searches and organize itinerary locations where supported |
+| Testing | Pytest, Node.js built-in test runner, and Oxlint | Exercise backend and frontend behavior and lint frontend code |
+
+### 15.3 Environment and development configuration
+
+The root `.env.example` is a placeholder reference for configuration; supply local values in an untracked environment file and do not put credentials in source control. Backend configuration includes `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MONGODB_URI`, `MONGODB_DATABASE`, and `PACK_GO_ALLOWED_ORIGINS`. Frontend configuration uses `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL`. Optional provider and local RAG/storage settings are also represented in the template.
+
+The Vite development configuration reads the repository-root environment and proxies the health, planning, and `/api/v1` requests to the local FastAPI service. Backend tests use Pytest from the repository root; frontend tests use the `npm test` script from `frontend/`.
 
 ## 16. Security, Privacy, and Error Handling
 
