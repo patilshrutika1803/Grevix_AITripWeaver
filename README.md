@@ -1,12 +1,58 @@
-# PACK & GO – AI-Powered Smart Travel Planning Platform
+# PACK & GO — AI-Powered Smart Travel Planning Platform
 
-> **Grevix AfterCode | Problem Statement & Software Requirements Specification (SRS)**
+> **Grevix AfterCode | PACK & GO (Grevix AI Trip Weaver)**
 
-PACK & GO is an AI-powered travel planning platform designed to make trip planning more personalized, organized, and practical. Instead of relying on a single generic AI-generated itinerary, the project brings itinerary generation together with budget planning, weather information, place research and map links, packing assistance, expense management, and contextual travel support.
+Trip planning is fragmented across itinerary, budget, weather, map, research, and coordination tools. PACK & GO brings those steps into one AI-assisted workspace: travellers describe a destination, duration, budget, and interests, then review a personalized day-wise plan alongside available destination context, map links, cost estimates, packing help, trip utilities, saved trips, and contextual travel guidance.
 
-The original Phase 1 hackathon registration idea described a workflow that understands user preferences, researches the destination, considers weather and budget constraints, generates an itinerary, and refines the plan based on user requirements. Retrieval-Augmented Generation (RAG) was included in the project vision for context-aware assistance grounded in relevant travel knowledge.
+The project was built for **Grevix AfterCode**. Its original hackathon vision and problem statement are preserved below; implementation status, provider dependencies, feedback, and known gaps are called out separately so the long-term vision is not mistaken for a verified live capability.
 
-The original 24-hour hackathon MVP goals were AI-powered itinerary generation, personalized recommendations, budget and weather integration, and an interactive travel dashboard. These are the registered goals, not a claim that every proposed integration or capability is complete. This README preserves that original context and separately identifies Phase 2 capabilities verified in the repository.
+**Live demo:** [grevix-ai-trip-weaver.vercel.app](https://grevix-ai-trip-weaver.vercel.app/) · **Repository:** [patilshrutika1803/Grevix_AITripWeaver](https://github.com/patilshrutika1803/Grevix_AITripWeaver)
+
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![Vite 8](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![LangGraph](https://img.shields.io/badge/AI-LangGraph-1C3C3C)](https://www.langchain.com/langgraph)
+[![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/auth)
+
+**Contents:** [Overview](#overview) · [Demo walkthrough](#demo-walkthrough) · [Feature status](#feature-status) · [Problem and vision](#1-hackathon-problem-statement-project-vision) · [Challenge 2](#43-challenge-2-completed-work) · [Architecture](#9-ai-planning-architecture) · [RAG](#10-retrieval-augmented-generation-rag) · [Feedback](#user-feedback-and-improvements) · [Setup](#local-setup-and-environment-configuration) · [Deployment](#deployment) · [Limitations](#known-limitations)
+
+## Overview
+
+PACK & GO coordinates personalized itinerary generation, budget awareness, available weather and destination information, map links, packing assistance, trip utilities, saved trips, and contextual guidance in one travel workspace. Specialized planning steps share the trip context rather than leaving travellers to stitch together separate tools. It is a planning assistant—not a booking service, a source of guaranteed live prices, or a fully offline travel application.
+
+### Demo walkthrough
+
+1. Open the [live website](https://grevix-ai-trip-weaver.vercel.app/).
+2. Use **Log in** (`/login`) or create an account at `/register`. Supabase Auth, its callback URLs, the API, and MongoDB must be configured for account flows and protected data to work in the deployed environment.
+3. Once signed in, open **Preferences** (`/preferences`) and save reusable travel style, interests, budget, accommodation, food, and destination preferences. Profile and preference routes require authentication.
+4. Choose **Plan a trip** (`/plan`) and enter a destination, duration, budget, and interests. The planner route is public, but signing in allows the backend to use saved preferences and associate the generated trip with the account. AI responses depend on configured model credentials and provider availability.
+5. Review the day-wise itinerary, estimated budget and category breakdown, place details, and OpenStreetMap search links. Weather context may be unavailable; the current plan summary can display “Good conditions” when no forecast was returned, so do not treat that label as a verified forecast.
+6. Open **My trips** (`/trips`) and a saved trip to explore its **Utilities**, journal, expenses, and—when it is a group trip—collaboration workspace. Utilities include packing assistance, place/weather lookups, currency conversion, and schedule/route tools; live data and optimization depend on configured services and saved trip data.
+7. On a saved trip, choose **Save for Offline**. Then open **Offline Vault** (`/offline-vault`) to find the local snapshot. Both trip pages and the Vault are protected routes; snapshots live in this browser’s IndexedDB and are not synced to another device.
+8. Offline mode can reopen selected saved trip snapshots and, when previously cached, the app shell/static assets. It does **not** make backend APIs, authentication, AI, weather, place search, or other live services work offline, and offline edits are not synchronized.
+
+### Feature status
+
+“Implemented” below means the relevant path exists in the repository; it does not guarantee that a third-party provider is configured or reachable in every deployment.
+
+| Feature | Current status | User benefit | Dependency or limitation |
+|---|---|---|---|
+| AI itinerary planning and revision | Implemented: streamed multi-agent planning, saved-trip day regeneration, and itinerary optimization tools | Produces a day-wise starting plan and supports changes | AI providers and research/weather integrations require configuration; results need traveller review |
+| Saved preferences | Implemented: profile preferences are supplied to planning for signed-in users | Reduces repeated entry of travel style and interests | Supabase Auth, backend, and MongoDB must be available |
+| Budget and expenses | Implemented: planning estimates/category breakdowns and saved-trip expense tools | Makes estimated trip costs and recorded spending visible | Estimates are not quotes; saved expense actions require access to the trip |
+| Weather | Implemented with optional live-provider integration | Adds weather context and current-weather lookup | Provider/API key and network required; missing plan forecasts may be labelled “Good conditions” |
+| Maps and route tools | Implemented: OpenStreetMap place searches, saved-trip map data, A* route, CSP schedule, and GA schedule preview | Helps inspect places and organize available trip stops | External place data and saved coordinates matter; route optimization needs at least two stops with coordinates |
+| Packing assistance | Implemented for saved trips | Provides trip-specific preparation guidance | Requires an accessible saved trip; source data/provider availability can limit results |
+| Explore | Implemented as a curated destination collection with links into planning | Offers a quick starting point for popular destinations | Not comprehensive or hidden-gem discovery; search/filter presentation is limited |
+| Travel Guide / RAG | Implemented: indexed-source browsing and question answering | Answers destination questions against retrieved travel material | Requires available indexed sources, vector storage, embeddings, and model configuration |
+| Saved trips | Implemented: list, open, update, and delete account trips | Keeps generated plans available for later review | Sign-in, API, and MongoDB required for account-backed persistence |
+| Journal | Implemented: dated trip entries, media links, and trip statistics | Preserves trip notes and memories | Requires an authenticated user with access to the trip; media are HTTP(S) references, not uploaded files |
+| Group workspace | Implemented: invitations, members/roles, proposals/votes, decisions, checklist, chat, notifications, and shared expenses | Keeps group planning and coordination with the trip | Requires an authenticated, authorized group-trip member; there is no public standalone chat |
+| Authentication | Implemented with Supabase Auth and backend bearer-token validation | Protects profile, trip, and group data | Correct Supabase, callback, API-origin, CORS, and MongoDB configuration required |
+| Offline Vault | Implemented as local IndexedDB trip snapshots plus a service-worker app shell/static cache | Reopens selected saved data on the same device | Not API caching, offline editing/sync, or full offline application functionality |
+
+The project does not claim live location sharing, travel-safety monitoring, or hidden-gem discovery as implemented features.
 
 ---
 
@@ -49,7 +95,7 @@ The Phase 1 vision was to coordinate several planning steps rather than return a
 4. Review and refine the plan against the traveller's requirements.
 5. Use RAG to provide contextual travel assistance from relevant knowledge.
 
-Within the original 24-hour hackathon, the MVP objective was to demonstrate AI itinerary generation, personalized travel recommendations, budget and weather integration, and an interactive travel dashboard. These goals describe the registration idea; Section 4.3 records the additional Phase 2 work verified in this repository. The requirements and workflows in this SRS describe intended behavior and should not, by themselves, be read as proof that every feature or external integration is enabled.
+Within the original 24-hour hackathon, the MVP objective was to demonstrate AI itinerary generation, personalized travel recommendations, budget and weather integration, and an interactive travel dashboard. These goals describe the registration idea; Section 4.3 records Challenge 2 work verified in this repository. The requirements and workflows in this SRS describe intended behavior and should not, by themselves, be read as proof that every feature or external integration is enabled.
 
 ## 2. Proposed Solution
 
@@ -98,15 +144,17 @@ The proposed experience is organized around five principles:
 - Group trip invitations, members, proposals, voting, decisions, chat, and shared checklists.
 - Trip journal and administrative knowledge-management functions.
 
-### 4.3 Phase 2 implementation verified in the repository
+### 4.3 Challenge 2 — Completed Work
 
-| Area | What is implemented | User problem addressed and experience |
-|---|---|---|
-| Offline Travel Vault | An authenticated Offline Vault lists locally saved trips. From an online trip detail page, a user can choose **Save for Offline**; the app stores a trip snapshot in browser IndexedDB and can load that snapshot when the trip API request is unavailable. | Keeps a saved itinerary and its available trip details accessible on the same device during a connection loss. The Vault shows the saved time and the trip details available in the snapshot; it does not synchronize changes made while offline. |
-| Offline trip snapshots and freshness | A trip snapshot includes available itinerary, budget, date, preference, review, and weather data; separate weather and place snapshots are created only when those data are present. Records track save/update timestamps. Freshness rules define time-to-live values of 6 hours for weather, 30 days for guides, and 7 days for places and routes; trip snapshots have no expiry. The Vault currently surfaces a fresh/stale label for weather. | Helps travellers understand what trip context is stored locally and whether cached weather may need checking again. Guide and route record types exist in storage, but this trip-save flow does not populate them. |
-| PWA shell and offline behavior | The frontend includes a web app manifest and registers a service worker in production builds. The worker attempts to precache the application shell, uses a network-first strategy for navigations with the cached app shell as a fallback when available, and caches eligible same-origin static assets. API and other backend requests are excluded from its cache rules. | Allows the application shell and cached static resources to open without a network connection after they have been cached. The fallback is the app shell, not a separate offline page; live API-backed features remain unavailable offline. |
-| Supabase authentication and MongoDB setup | The frontend uses Supabase Auth with a public anonymous key and persisted browser sessions. The backend validates bearer tokens through Supabase and maintains user profiles in MongoDB. MongoDB configuration is explicit, connection initialization pings the server and creates indexes, and connection failures are surfaced with sanitized messages. | Makes the authentication and application-data configuration explicit and avoids presenting a failed database connection as a successful operation. Access to saved trips still depends on online authentication and backend access; locally saved snapshots are a separate read-only fallback. |
-| Tests and developer configuration | `.env.example` provides placeholder variable names for backend, frontend, provider, and RAG/storage configuration. Vite is configured to load the repository-root environment and proxy the local health, planning, and API paths. The repository includes focused frontend tests for offline storage, snapshots and freshness, plus backend tests for Supabase auth and MongoDB configuration. | Gives contributors a non-secret configuration reference and automated checks around the new offline and backend configuration behavior. Test files are present; this README does not claim a test-run result. |
+The following entries are ordered by the confirmed Git history. These Challenge 2 changes improve reliability and access to existing features; they do not imply that every external provider is configured.
+
+| Date | Commit | Problem addressed | Verified change | User benefit |
+|---|---|---|---|---|
+| 2026-10-11 | [`3080831`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/3080831) | A saved itinerary had no device-local way to reopen selected trip details, and the web app had no installable/offline shell foundation. | Added IndexedDB-backed trip, weather, and place snapshots, a web manifest and service worker, and an authenticated Offline Vault; stabilized backend Supabase-token and MongoDB configuration. API requests are deliberately excluded from service-worker caching. | Signed-in travellers can keep selected trip data and previously cached app-shell assets on the same device, without confusing that for offline API access. |
+| 2026-10-11 | [`5c75b15`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/5c75b15) | The project needed a clearer written record of the registered vision and Challenge 2 scope. | Updated the README’s hackathon vision and Phase 2 progress; this was documentation-only, not an application feature change. | Preserved the original goal and made project status easier to distinguish from future scope. |
+| 2026-10-11 | [`6a11f89`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/6a11f89) | Offline snapshots could be incomplete or stale, and browser storage/refresh failures needed safer handling. | Added snapshot validation and recovery guidance, freshness indicators, associated-record cleanup, and explicit storage errors; added focused offline storage, snapshot, and Vault tests. Refresh failures do not silently replace an existing saved snapshot. | Makes local trip copies easier to evaluate and recover without losing a previously saved copy on refresh failure. |
+| 2026-10-11 | [`2f9ef38`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/2f9ef38) | Production sign-in callbacks, post-login redirects, API origin selection, and direct frontend-route refreshes needed explicit handling. | Added the Supabase callback flow, safe local redirects, production API-origin handling, and Vercel SPA rewrites for client routes. | Supports sign-in/recovery and direct route loads while preserving protected-route checks and avoiding a silent fallback to a local backend. |
+| 2026-10-11 | [`732e3b2`](https://github.com/patilshrutika1803/Grevix_AITripWeaver/commit/732e3b2) | Production clients needed consistent response metadata/group detection and safer journal validation/error responses. | Returned preference `updated_at`, added `is_group` (default `false`) to trip responses, validated journal media links, returned field-specific journal validation details, and aligned trip-page loading and API error handling with the contracts. | Prevents clients from losing metadata or requesting group-only data for personal trips, and gives clearer journal/API validation feedback. |
 
 ## 5. Stakeholders and User Roles
 
@@ -575,12 +623,14 @@ The project is organized as a web application with a separate frontend and Pytho
 | Area | Repository path | Responsibility |
 |---|---|---|
 | Frontend | `frontend/src/` | React pages, reusable components, API client, authentication, and offline trip storage |
+| Frontend shell/assets | `frontend/public/`, `frontend/index.html`, `frontend/vite.config.js` | PWA manifest, service worker, static assets, and local development proxy |
 | HTTP API | `api/v1/` | FastAPI route groups for trips, users, collaboration, expenses, journal, knowledge, utilities, and administration |
 | AI workflow | `agent/` | Planning supervisor and specialized preference, research, weather, budget, itinerary, critic, and knowledge agents |
 | Services and tools | `services/`, `tools/` | Trip and collaboration behavior, itinerary/route algorithms, expenses, and external travel utilities |
 | RAG | `rag/` | Knowledge ingestion, chunking, embeddings, retrieval, and response generation |
 | Data and migrations | `database/`, `models/`, `alembic/` | Database access, data models, and relational migration support |
-| Tests | `tests/`, `frontend/tests/` | Backend Python tests and frontend Node.js tests |
+| Documentation and feedback | `docs/`, `FEEDBACK/` | Deployment guidance and the supplied feedback screenshots |
+| Tests and project config | `tests/`, `frontend/tests/`, `.env.example`, `requirements.txt`, `pyproject.toml` | Backend Python tests, frontend Node.js tests, placeholder configuration, and Python dependencies |
 
 ### 15.2 Technology stack
 
@@ -591,8 +641,8 @@ The project is organized as a web application with a separate frontend and Pytho
 | AI orchestration | LangGraph workflow and specialized agents | Coordinate research, itinerary, budget, weather, review, and knowledge tasks |
 | Language-model and travel integrations | Configured Groq/Gemini and travel-data providers | Generate planning responses and supply available place, weather, and currency data |
 | RAG and vector storage | Chunking, sentence-transformer embeddings, retrieval, generation, and ChromaDB | Retrieve relevant travel knowledge for question answering |
-| Application data and authentication | MongoDB and Supabase Auth | Store application records and verify user identity |
-| Relational data tooling | SQLAlchemy and Alembic | Relational database access and schema migration support included in the repository |
+| Application data and authentication | MongoDB and Supabase Auth | MongoDB stores application records; Supabase Auth manages browser sessions and supports backend bearer-token verification |
+| Relational data tooling | SQLAlchemy and Alembic | Relational models and migration tooling are present in the repository; the current application data layer uses MongoDB |
 | Maps and routes | OpenStreetMap search links and route-optimization utilities | Open place searches and organize itinerary locations where supported |
 | Testing | Pytest, Node.js built-in test runner, and Oxlint | Exercise backend and frontend behavior and lint frontend code |
 
@@ -600,7 +650,7 @@ The project is organized as a web application with a separate frontend and Pytho
 
 The root `.env.example` is a placeholder reference for configuration; supply local values in an untracked environment file and do not put credentials in source control. Backend configuration includes `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MONGODB_URI`, `MONGODB_DATABASE`, and `PACK_GO_ALLOWED_ORIGINS`. Frontend configuration uses `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL`. Optional provider and local RAG/storage settings are also represented in the template.
 
-The Vite development configuration reads the repository-root environment and proxies the health, planning, and `/api/v1` requests to the local FastAPI service. Backend tests use Pytest from the repository root; frontend tests use the `npm test` script from `frontend/`.
+The Vite development configuration reads the repository-root environment and proxies the health, planning, and `/api/v1` requests to the local FastAPI service. Frontend test/build/lint scripts are declared in `frontend/package.json`. Backend tests use Pytest from the repository root; Pytest is not a runtime dependency in `requirements.txt`, so install it separately in a development environment if needed.
 
 ## 16. Security, Privacy, and Error Handling
 
@@ -642,3 +692,143 @@ The broader platform requirements can be evaluated separately for saved trips, R
 PACK & GO aims to reduce the friction of travel planning by bringing personalized itinerary generation and practical trip organization into one experience. By combining AI planning with budget awareness, weather and destination context, supporting utilities, and collaboration, the platform helps travellers move from a broad idea to a plan they can review, adjust, and use.
 
 The key value is not simply generating a list of places. It is coordinating the information and constraints that make a trip more realistic: **where to go, what to do, when to do it, how much it may cost, what to prepare, and how to adapt the plan when requirements change.**
+
+## Judge Snapshot
+
+- **Problem:** Trip planning means reconciling places, schedules, costs, conditions, and group preferences across disconnected sources. PACK & GO is designed to bring that work into one reviewable trip workspace.
+- **Beyond a basic itinerary generator:** a LangGraph workflow coordinates preference extraction, destination research, weather and budget steps, itinerary generation, and critique; the saved trip then connects to maps, utilities, expenses, a journal, and group tools.
+- **Less repeated input:** signed-in travellers can save profile preferences and supply them to later planning requests. Users can still provide trip-specific constraints for each plan.
+- **Challenge 2 reliability work:** the verified commits introduced device-local trip snapshots and app-shell caching, recovery/freshness/error handling, production auth callbacks and SPA route delivery, plus API contract and journal-validation fixes.
+- **Vision versus implementation:** the Phase 1 registration goals and SRS below preserve the project’s intended scope. The Feature status table describes the current code; third-party data, production configuration, and full offline capability are explicitly conditional or out of scope.
+- **Realistic next steps:** make homepage feature cards navigable, distinguish missing weather data from a forecast, verify the mobile feedback at device widths, consider hidden-gem and safety information, and resolve the failing frontend and backend test suites. These are not claimed as completed work.
+
+## Phase 3 — Final Polish, Feedback Review, and Validation
+
+Phase 3 work recorded here is documentation and evidence review. This README update does not change application code, configuration, dependencies, deployment settings, or database schemas. Historical implementation work is listed under Challenge 2 above and linked to confirmed commits.
+
+| Phase 3 item | Verified state | User/judge impact |
+|---|---|---|
+| README and feedback review (this documentation update) | Adds the live demo/repository links, actual route-based walkthrough, implementation/dependency status, test results, and links to all 17 supplied screenshots. Feedback themes were checked against the current UI and repository history. | Makes the difference between the project vision, existing functionality, provider-dependent behavior, and open suggestions easier to assess. |
+| Existing UI behavior checked; not attributed to new work | Explore destination cards link into planning, but landing-page feature cards are static articles. The place-detail close control is in the modal header below its photo, not over the photo. Responsive CSS and hover/focus styles exist, but the requested mobile and interactive-affordance changes have not been verified as complete. | Records specific usability gaps rather than presenting suggestions as fixed. |
+| Missing-weather state checked; not fixed | `PlanCard` currently falls back to “Good conditions” when `weather.conditions` is absent. No weather-label change is claimed. | Avoids confusing missing forecast data with a positive forecast; correcting the label remains a follow-up. |
+
+### Validation results
+
+| Command and working directory | Result |
+|---|---|
+| `npm run lint` (`frontend/`) | Passed. |
+| `npm run build` (`frontend/`) | Passed. Vite emitted a chunk-size advisory: the minified JavaScript bundle is 683.67 kB, above the 500 kB advisory threshold. |
+| `npm test` (`frontend/`) | 34 tests total: 32 passed and 2 failed in `tests/offline-vault-page.test.js`. Both failures stem from an assertion expecting `/Updated /` while the UI renders “Last updated …”; the frontend suite is not fully green. |
+| `python -m pytest -q` (repository root, project virtual environment) | 143 passed, 45 failed, 73 errors, and 2 warnings. The backend suite is not green; failures and setup/runtime errors require separate triage. |
+
+The live demo and GitHub repository URLs resolve, and the feedback links below match the 17 files in `FEEDBACK/`. This review did not verify account creation, Supabase email callbacks, live itinerary generation, external-provider responses, database persistence, or RAG behavior against production credentials; those still require a configured, end-to-end manual check.
+
+## User Feedback and Improvements
+
+The 17 supplied screenshots were reviewed and grouped into positive product themes, usability suggestions, and future requests. Each suggestion was checked against current source and the confirmed Challenge 2 history before assigning a status. The screenshots are qualitative evidence only: this summary does not infer user identities, quotes, counts, representativeness, or that every person tried every feature.
+
+**Status labels:** **Implemented and verified** means the corresponding behavior is present in source and has a relevant passing test or code-path verification; **Already existed and was retained** means the feedback describes an existing feature rather than new work; **In progress / pending verification** means there is related functionality but the requested outcome is not confirmed; **Planned for a future version** means the suggestion is not implemented.
+
+### What users liked
+
+| Feedback theme | Status | Evidence-based note |
+|---|---|---|
+| Preference-based planning and generated day-wise itineraries | Already existed and was retained | Preference forms, streamed planning, and day regeneration exist in the app; screenshots mention saved preferences and generated plans. |
+| Maps, destination details, timings, and budget breakdowns | Already existed and was retained | Itinerary place details, map search links, and estimated category costs are present; screenshots call out location and cost detail. |
+| Visual design and a unified trip workspace | Already existed and was retained | The product combines planning, itinerary, saved-trip, and utility views; screenshots praise the presentation and having travel tools together. |
+| Saved trips, Offline Vault, and the trip journal | Already existed and was retained | These features are present in the code; screenshots mention revisiting saved plans, the Vault, and recording trip memories. |
+
+### Usability improvements
+
+| Suggestion | Status | Current evidence / next step |
+|---|---|---|
+| Make homepage feature cards open their related pages | Planned for a future version | `LandingPage.jsx` renders the feature cards as `<article>` elements; they are not navigation links. |
+| Improve small-screen alignment | In progress / pending verification | Responsive rules exist, but the specific feedback has not been checked against a handset-sized end-to-end view. |
+| Make interactive controls easier to recognize | In progress / pending verification | Hover/focus styles exist in parts of the UI; comprehensive keyboard, pointer, and mobile verification is still needed. |
+| Place the popup close button over the background photo | Planned for a future version | The place-detail close button is in the header beneath the photo, not positioned over it. |
+| Say when weather data is unavailable | Planned for a future version | The generated-plan card currently uses the “Good conditions” fallback when no forecast condition exists. |
+
+### Future feature requests
+
+| Request | Status | Boundary |
+|---|---|---|
+| Discover hidden gems and lesser-known local places | Planned for a future version | Explore currently shows a small curated destination set; hidden-gem discovery is not implemented. |
+| Add travel-safety information, emergency contacts, or location sharing | Planned for a future version | These safety features are not present. Any future location-sharing design would need explicit consent and privacy controls. |
+| Plan together through group collaboration/chat | Already existed and was retained | Authorized group trips already include invitations, roles, proposals/voting, decisions, checklists, chat, notifications, and expenses. The screenshots’ suggestion is not treated as a new feature request still awaiting implementation. |
+
+### Screenshot index
+
+| Screenshot | Evidence |
+|---|---|
+| 1 | [Open screenshot](FEEDBACK/Image%20%281%29.jpg) |
+| 2 | [Open screenshot](FEEDBACK/Image%20%282%29.jpg) |
+| 3 | [Open screenshot](FEEDBACK/Image%20%283%29.jpg) |
+| 4 | [Open screenshot](FEEDBACK/Image%20%284%29.jpg) |
+| 5 | [Open screenshot](FEEDBACK/Image%20%285%29.jpg) |
+| 6 | [Open screenshot](FEEDBACK/Image%20%286%29.jpg) |
+| 7 | [Open screenshot](FEEDBACK/Image%20%287%29.jpg) |
+| 8 | [Open screenshot](FEEDBACK/Image%20%288%29.jpg) |
+| 9 | [Open screenshot](FEEDBACK/Image%20%289%29.jpg) |
+| 10 | [Open screenshot](FEEDBACK/Image%20%2810%29.jpg) |
+| 11 | [Open screenshot](FEEDBACK/Image%20%2811%29.jpg) |
+| 12 | [Open screenshot](FEEDBACK/Image%20%2812%29.jpg) |
+| 13 | [Open screenshot](FEEDBACK/Image%20%2813%29.jpg) |
+| 14 | [Open screenshot](FEEDBACK/Image%20%2814%29.jpg) |
+| 15 | [Open screenshot](FEEDBACK/Image%20%2815%29.jpg) |
+| 16 | [Open screenshot](FEEDBACK/Image%20%2816%29.jpg) |
+| 17 | [Open screenshot](FEEDBACK/Image%20%2817%29.jpg) |
+
+## Local Setup and Environment Configuration
+
+Use Python 3.12 or later and Node.js/npm. From the repository root, create a local `.env` using the placeholder names in `.env.example`; never commit credentials. The frontend Vite configuration reads the repository-root environment file.
+
+Backend, in the repository root:
+
+```powershell
+python -m pip install -r requirements.txt
+python -m uvicorn main:app --host 127.0.0.1 --port 8001
+```
+
+Frontend, in `frontend/`:
+
+```powershell
+npm ci
+npm run dev
+```
+
+The development server uses port 5173 and proxies `/health`, `/plan`, and `/api/v1` to the backend on port 8001. Relevant configuration keys are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MONGODB_URI`, `MONGODB_DATABASE`, and `PACK_GO_ALLOWED_ORIGINS` on the backend; `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL` on the frontend. Provider keys (`GROQ_API_KEY`, `GOOGLE_API_KEY`, `TAVILY_API_KEY`, `OPENWEATHERMAP_API_KEY`, `EXCHANGE_RATE_API_KEY`, and `ALPHAVANTAGE_API_KEY`) and storage paths (`CHROMA_PERSIST_DIRECTORY`, `RAG_STORAGE_DIRECTORY`) are optional for their corresponding integrations. `.env.example` is the source of truth for the complete key list and contains placeholders only.
+
+Useful project commands:
+
+```powershell
+# From frontend/
+npm run dev
+npm run build
+npm run preview
+npm run lint
+npm test
+
+# From the repository root
+# Install Pytest separately if it is not already available in the development environment:
+# python -m pip install pytest
+python -m pytest
+```
+
+## Deployment
+
+The documented deployment target is a Vite frontend on Vercel with `frontend/` as the project root, `npm run build` as the build command, and `dist/` as the output directory. `frontend/vercel.json` rewrites client-side routes to the SPA entry point. This is a deployment guide, not evidence that every hosting variable or backend integration is configured.
+
+The documented backend target is a Render Web Service from the repository root, using Python 3.12, `pip install -r requirements.txt`, and `uvicorn main:app --host 0.0.0.0 --port $PORT`; the readiness endpoint is `/health/ready`. Configure the real backend origin as frontend `VITE_API_BASE_URL` and allow the frontend origin through backend `PACK_GO_ALLOWED_ORIGINS`. Configure Supabase callback URLs for the deployed frontend and provide the required MongoDB and Supabase values to the backend only. Provider keys and persistent storage for local RAG/vector data are needed only for those enabled integrations.
+
+The production frontend is [grevix-ai-trip-weaver.vercel.app](https://grevix-ai-trip-weaver.vercel.app/). Refer to [PRODUCTION_ENVIRONMENT.md](docs/PRODUCTION_ENVIRONMENT.md) for the detailed, environment-specific deployment instructions. No deployment was performed for this README change.
+
+## Known Limitations
+
+- Offline support is limited to the app shell/static assets and selected trip snapshots saved on the same browser/device. It does not cache backend APIs, synchronize offline edits, or make the whole application available offline.
+- Weather, AI generation, place lookup, currency conversion, and persistent RAG content depend on provider credentials, network access, provider limits, and (for persistent local vector/file data in deployment) configured persistent storage.
+- Weather data is optional. When the generated plan has no `weather.conditions`, its summary currently falls back to “Good conditions”; users should not interpret that label as a verified forecast.
+- Explore currently shows a curated destination collection rather than a comprehensive or specifically hidden-gem discovery service.
+- The landing-page feature cards, Explore search/filter controls, and some place-modal action buttons are presentational rather than fully wired navigation/actions.
+- Homepage feature cards are informational `<article>` elements rather than links, even though feedback indicates that users may expect them to open the corresponding features.
+- Group chat and collaboration require an authenticated, accessible group trip. Live location sharing and emergency-contact management are not implemented.
+- Itinerary recommendations and budgets are AI-generated estimates; check current schedules, opening hours, prices, weather, and travel details with authoritative sources before departure.
