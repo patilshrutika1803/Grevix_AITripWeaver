@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { authApi } from '../api/client'
+import { getAuthRedirectUrl } from './redirects'
 import { AuthContext } from './context'
 import {
   getSupabaseClient,
@@ -146,7 +147,10 @@ export function AuthProvider({ children }) {
       const { data, error } = await authClient.auth.signUp({
         email,
         password,
-        options: { data: { name: name.trim() } },
+        options: {
+          data: { name: name.trim() },
+          emailRedirectTo: getAuthRedirectUrl('/auth/callback', window.location.origin),
+        },
       })
       if (error) throw error
       if (data.session) {
@@ -168,7 +172,7 @@ export function AuthProvider({ children }) {
 
   const requestPasswordReset = async (email) => {
     const { error } = await requireSupabase().auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/forgot-password`,
+      redirectTo: getAuthRedirectUrl('/forgot-password', window.location.origin),
     })
     if (error) throw error
     return { message: 'If the account exists, password reset instructions have been sent.' }

@@ -41,11 +41,17 @@ process is safely stopped, the proxy target may be changed back to `8000`.
    `VITE_SUPABASE_ANON_KEY` and backend `SUPABASE_ANON_KEY`. The backend accepts
    `VITE_SUPABASE_ANON_KEY` as a legacy fallback, but use the backend-specific
    variable in hosting settings.
-4. In **Authentication → URL Configuration**, add local URLs
-   (`http://localhost:5173`, `http://127.0.0.1:5173`) and the eventual Vercel
-   deployment/custom domain to **Site URL** and **Redirect URLs** as applicable.
-   The app sends password reset links to `/forgot-password`. Email-confirmation
-   behavior is controlled by Supabase Auth settings.
+4. In **Authentication → URL Configuration**, set the Site URL to the
+   production frontend origin and add these exact Redirect URLs:
+   `https://grevix-ai-trip-weaver.vercel.app/auth/callback` and
+   `https://grevix-ai-trip-weaver.vercel.app/forgot-password`. Also allow the
+   local callback and recovery URLs for development:
+   `http://localhost:5173/auth/callback`,
+   `http://localhost:5173/forgot-password`,
+   `http://127.0.0.1:5173/auth/callback`, and
+   `http://127.0.0.1:5173/forgot-password`. Signup email confirmation returns to
+   `/auth/callback`; password recovery returns to `/forgot-password`. Configure
+   Supabase email confirmation and SMTP as needed.
 5. Enable Email auth in **Authentication → Providers → Email**. Set up SMTP
    before launch if production registration/confirmation emails are required.
 
@@ -139,9 +145,9 @@ overwriting a production index.
 
 Import the GitHub repository in Vercel and set **Root Directory** to
 `frontend`. Framework preset: **Vite**; build command `npm run build`; output
-directory `dist`; install command `npm install`. `frontend/vercel.json` already
-rewrites client-side routes to `/index.html`, preserving direct navigation and
-refresh on paths such as `/trips` and `/offline-vault`.
+directory `dist`; install command `npm install`. `frontend/vercel.json` rewrites
+client-side routes to `/index.html`, while excluding API, health, stream, and
+static-asset paths.
 
 Set the following for each Vercel environment that should work (Production,
 Preview, Development):
@@ -154,7 +160,9 @@ Preview, Development):
 
 The empty `VITE_API_BASE_URL` is for local development only: Vite proxies
 `/health`, `/api/v1`, and `/plan` to `http://127.0.0.1:8001` (see Local
-development above). The deployed backend must be reachable over HTTPS. Vercel
+development above). Production API calls fail with an explicit configuration
+error if this variable is missing; they do not fall back to a local or
+same-origin backend. The deployed backend must be reachable over HTTPS. Vercel
 variables prefixed with `VITE_` are bundled into public frontend assets; never
 set server secrets there.
 

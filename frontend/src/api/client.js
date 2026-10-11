@@ -1,12 +1,16 @@
 import { getSupabaseClient } from '../auth/supabase.js'
 
 const processEnvironment = typeof process === 'undefined' ? {} : process.env
-const API_BASE_URL = (((import.meta.env || {}).VITE_API_BASE_URL || processEnvironment.VITE_API_BASE_URL) || '').replace(/\/+$/, '')
+const API_ENVIRONMENT = import.meta.env || {}
+const API_BASE_URL = ((API_ENVIRONMENT.VITE_API_BASE_URL || processEnvironment.VITE_API_BASE_URL) || '').trim().replace(/\/+$/, '')
 const PREFERENCE_ERROR = 'Unable to save your preferences. Please try again.'
 const PREFERENCE_VALIDATION_ERROR = 'Some preference values are invalid. Please check your selections.'
 const PREFERENCE_FIELDS = ['travel_style', 'interests', 'things_to_avoid', 'budget_preference', 'hotel_preference', 'food_preference', 'preferred_destinations', 'preferred_budget_min', 'preferred_budget_max', 'preferred_currency', 'preferred_trip_duration', 'is_domestic']
 
 export function apiUrl(path) {
+  if (!API_BASE_URL && API_ENVIRONMENT.PROD) {
+    throw new Error('VITE_API_BASE_URL must be configured for production API requests.')
+  }
   return `${API_BASE_URL}${path}`
 }
 

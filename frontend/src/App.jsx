@@ -18,11 +18,17 @@ import AdminRoute from './routes/AdminRoute'
 import InvitationAcceptPage from './pages/InvitationAcceptPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import OfflineVaultPage from './pages/OfflineVaultPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 import './App.css'
 
 export default function App() {
   const location = useLocation()
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password'
+  const isAuthPage = [
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/auth/callback',
+  ].includes(location.pathname)
   return (
     <AuthProvider>
       <div className="site-shell">
@@ -35,6 +41,7 @@ export default function App() {
             <Route path="/login" element={<AuthPage mode="login" />} />
             <Route path="/register" element={<AuthPage mode="register" />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/invitations/:token" element={<InvitationAcceptPage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/trips" element={<TripsPage />} />
