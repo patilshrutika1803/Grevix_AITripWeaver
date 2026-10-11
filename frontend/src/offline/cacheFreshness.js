@@ -8,7 +8,7 @@ export const CACHE_TTL_MS = Object.freeze({
 })
 
 export function getCacheFreshness(record, { now = Date.now(), ttlByType = {} } = {}) {
-  const savedAtMs = Date.parse(record?.savedAt)
+  const savedAtMs = Date.parse(record?.updatedAt ?? record?.savedAt)
   const currentTimeMs = now instanceof Date
     ? now.getTime()
     : typeof now === 'string'

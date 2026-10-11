@@ -4,6 +4,7 @@ import { OFFLINE_RECORD_TYPES } from '../src/offline/offlineStorage.js'
 import {
   buildTripOfflineSnapshots,
   deleteTripOffline,
+  isValidTripSnapshot,
   saveTripOffline,
 } from '../src/offline/offlineTripSnapshots.js'
 
@@ -24,6 +25,21 @@ function createMemoryStorage(initialRecords = []) {
     deleteOfflineRecord: async (recordType, key) => records.delete(`${recordType}:${key}`),
   }
 }
+
+test('validates snapshot identity without requiring optional itinerary data', () => {
+  assert.equal(isValidTripSnapshot({ tripId: 'trip-1', id: 'trip-1' }, 'trip-1'), true)
+  assert.equal(isValidTripSnapshot({ tripId: 'trip-1' }, 'trip-1'), true)
+  assert.equal(isValidTripSnapshot({ id: 'trip-1' }, 'trip-1'), true)
+  assert.equal(isValidTripSnapshot({ tripId: 'trip-1', itinerary: [] }, 'trip-1'), true)
+})
+
+test('rejects malformed snapshots and conflicting or mismatched trip identifiers', () => {
+  assert.equal(isValidTripSnapshot(null, 'trip-1'), false)
+  assert.equal(isValidTripSnapshot([], 'trip-1'), false)
+  assert.equal(isValidTripSnapshot({ destination: 'Goa' }, 'trip-1'), false)
+  assert.equal(isValidTripSnapshot({ tripId: 'trip-2' }, 'trip-1'), false)
+  assert.equal(isValidTripSnapshot({ tripId: 'trip-1', id: 'trip-2' }, 'trip-1'), false)
+})
 
 test('builds trip, weather, and place snapshots only from present trip data', () => {
   const trip = {
@@ -74,6 +90,8 @@ test('omits empty auxiliary data and saves the trip without another data source'
     () => buildTripOfflineSnapshots({ ...trip, id: '' }),
     /trip with an ID is required/,
   )
+  assert.equal(savedTrip.data.destination, 'Pune')
+  assert.equal(Object.hasOwn(savedTrip.data, 'travel_dates'), false)
 })
 
 test('deletes a trip and only auxiliary snapshots associated with its ID', async () => {
@@ -94,4 +112,51 @@ test('reports IndexedDB/storage failures to callers', async () => {
     }),
     /IndexedDB unavailable/,
   )
+})
+
+test('does not discard an existing snapshot when saving its refresh fails', async () => {
+  const original = {
+    recordType: OFFLINE_RECORD_TYPES.TRIP,
+    key: 'trip-5',
+    data: { tripId: 'trip-5', destination: 'Original destination' },
+  }
+  const storage = createMemoryStorage([original])
+  storage.saveOfflineRecord = async () => {
+    throw new Error('IndexedDB write failed')
+  }
+
+  await assert.rejects(
+    saveTripOffline({ id: 'trip-5', destination: 'Updated destination' }, storage),
+    /IndexedDB write failed/,
+  )
+  assert.equal(storage.records.get('trip:trip-5'), original)
+})
+
+test('keeps the existing trip snapshot when saving refreshed auxiliary data fails', async () => {
+  const original = {
+    recordType: OFFLINE_RECORD_TYPES.TRIP,
+    key: 'trip-6',
+    data: { tripId: 'trip-6', id: 'trip-6', destination: 'Original destination' },
+  }
+  const storage = createMemoryStorage([original])
+  const saveOfflineRecord = storage.saveOfflineRecord
+  storage.saveOfflineRecord = async (recordType, key, data) => {
+    if (recordType === OFFLINE_RECORD_TYPES.PLACE) {
+      throw new Error('Place snapshot write failed')
+    }
+    return saveOfflineRecord(recordType, key, data)
+  }
+
+  await assert.rejects(
+    saveTripOffline({
+      id: 'trip-6',
+      destination: 'Updated destination',
+      itinerary: [{
+        day_number: 1,
+        attractions: [{ place: { name: 'Fort Aguada' } }],
+      }],
+    }, storage),
+    /Place snapshot write failed/,
+  )
+  assert.equal(storage.records.get('trip:trip-6'), original)
 })

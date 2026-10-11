@@ -14,13 +14,14 @@ import { GroupOverview } from '../components/group/GroupOverview'
 import { GroupProposals } from '../components/group/GroupProposals'
 import TripUtilities from '../components/TripUtilities'
 import TripJournal from '../components/TripJournal'
-import { saveTripOffline } from '../offline/offlineTripSnapshots.js'
+import { isValidTripSnapshot, saveTripOffline } from '../offline/offlineTripSnapshots.js'
 import { getOfflineRecord, OFFLINE_RECORD_TYPES } from '../offline/offlineStorage.js'
 import './TripDetailPage.css'
 import '../components/group/GroupWorkspace.css'
 
 const TRIP_TABS = ['overview', 'journal', 'utilities']
 const GROUP_TABS = [...TRIP_TABS, 'expenses', 'members', 'proposals', 'decisions', 'checklist', 'chat', 'notifications']
+const OFFLINE_RECOVERY_MESSAGE = 'This saved trip is incomplete or invalid. Refresh online if possible, or open it online and choose “Save for Offline” again.'
 
 function tripToPlan(trip) {
   return {
@@ -77,30 +78,63 @@ export default function TripDetailPage() {
   useEffect(() => {
     let active = true
     const loadTrip = async () => {
-      try {
-        const loadedTrip = await tripsApi.get(tripId)
-        if (!active) return
-        setTrip(loadedTrip)
-        groupTripsApi.workspace(tripId).then(setWorkspace).catch(() => {})
-      } catch (requestError) {
+      if (globalThis.navigator?.onLine === false) {
+        let cachedRecord
         let cachedTrip
         let storageError
         try {
-          cachedTrip = (await getOfflineRecord(OFFLINE_RECORD_TYPES.TRIP, String(tripId)))?.data
+          cachedRecord = await getOfflineRecord(OFFLINE_RECORD_TYPES.TRIP, String(tripId))
+          cachedTrip = cachedRecord?.data
         } catch (cacheError) {
           storageError = cacheError
         }
         if (!active) return
-        if (cachedTrip) {
-          setTrip(cachedTrip)
+        if (isValidTripSnapshot(cachedTrip, String(tripId))) {
+          setTrip({ ...cachedTrip, id: String(tripId) })
+          setLoadedOffline(true)
+          setMessage('Loaded this saved trip from your device. Some live services may be unavailable offline.')
+        } else {
+          const storageNote = storageError ? ` Local storage error: ${storageError.message}` : ''
+          setError(cachedRecord
+            ? `${OFFLINE_RECOVERY_MESSAGE}${storageNote}`
+            : `You’re offline and this trip isn’t saved on this device. Open it while online and choose “Save for Offline” first.${storageNote}`)
+        }
+        setLoading(false)
+        return
+      }
+
+      try {
+        const loadedTrip = await tripsApi.get(tripId)
+        if (!active) return
+        if (!isValidTripSnapshot(loadedTrip, String(tripId))) {
+          throw new Error('The server returned incomplete trip data.')
+        }
+        setTrip({ ...loadedTrip, id: String(tripId) })
+        groupTripsApi.workspace(tripId).then(setWorkspace).catch(() => {})
+      } catch (requestError) {
+        let cachedRecord
+        let cachedTrip
+        let storageError
+        try {
+          cachedRecord = await getOfflineRecord(OFFLINE_RECORD_TYPES.TRIP, String(tripId))
+          cachedTrip = cachedRecord?.data
+        } catch (cacheError) {
+          storageError = cacheError
+        }
+        if (!active) return
+        if (isValidTripSnapshot(cachedTrip, String(tripId))) {
+          setTrip({ ...cachedTrip, id: String(tripId) })
           setLoadedOffline(true)
           setMessage('Loaded this saved trip from your device. Some live services may be unavailable offline.')
         } else if (globalThis.navigator?.onLine === false) {
           const storageNote = storageError ? ` Local storage error: ${storageError.message}` : ''
-          setError(`You’re offline and this trip isn’t saved on this device. Open it while online and choose “Save for Offline” first.${storageNote}`)
+          setError(cachedRecord
+            ? `${OFFLINE_RECOVERY_MESSAGE}${storageNote}`
+            : `You’re offline and this trip isn’t saved on this device. Open it while online and choose “Save for Offline” first.${storageNote}`)
         } else {
           const storageNote = storageError ? ` Offline storage could not be checked: ${storageError.message}` : ''
-          setError(`${requestError.message}${storageNote}`)
+          const recoveryNote = cachedRecord ? ` ${OFFLINE_RECOVERY_MESSAGE}` : ''
+          setError(`${requestError.message}${recoveryNote}${storageNote}`)
         }
       } finally {
         if (active) setLoading(false)

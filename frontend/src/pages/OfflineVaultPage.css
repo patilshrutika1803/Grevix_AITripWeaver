@@ -21,6 +21,45 @@
   color: var(--primary);
 }
 
+.offline-vault-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.offline-vault-connectivity,
+.offline-vault-freshness {
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.offline-vault-connectivity.is-online,
+.offline-vault-freshness.is-fresh {
+  color: #176b42;
+  background: #e8f5ed;
+}
+
+.offline-vault-connectivity.is-offline,
+.offline-vault-freshness.is-stale {
+  color: #8b4b00;
+  background: #fff1d6;
+}
+
+.offline-vault-freshness.is-unavailable {
+  color: #5e6470;
+  background: #eceef1;
+}
+
+.offline-vault-error {
+  margin: 0 0 16px;
+}
+
 .offline-vault-page .offline-vault-list {
   display: grid;
   gap: 14px;
@@ -45,6 +84,12 @@
 
 .offline-vault-card-heading .eyebrow {
   color: var(--primary);
+}
+
+.offline-vault-updated {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .offline-vault-card-heading h2 {
@@ -72,6 +117,23 @@
   gap: 11px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.offline-vault-itinerary {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-muted, #f7f7f7);
+}
+
+.offline-vault-itinerary p {
+  margin: 0;
+}
+
+.offline-vault-itinerary p span {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .offline-vault-tags {

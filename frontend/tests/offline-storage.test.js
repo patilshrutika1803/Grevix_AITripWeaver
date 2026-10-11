@@ -232,6 +232,19 @@ test('cache freshness applies defaults, configurable TTLs, and non-expiring trip
   assert.equal(tripFreshness.isStale, false)
 })
 
+test('cache freshness measures age from the last update when available', () => {
+  const savedAt = '2026-10-01T00:00:00.000Z'
+  const updatedAt = '2026-10-11T13:00:00.000Z'
+  const freshness = getCacheFreshness({
+    recordType: OFFLINE_RECORD_TYPES.WEATHER,
+    savedAt,
+    updatedAt,
+  }, { now: Date.parse(updatedAt) + 500 })
+
+  assert.equal(freshness.ageMs, 500)
+  assert.equal(freshness.isStale, false)
+})
+
 test('freshness marks invalid timestamps stale when the record type has a TTL', () => {
   assert.deepEqual(getCacheFreshness(
     { recordType: OFFLINE_RECORD_TYPES.WEATHER, savedAt: 'not-a-date' },

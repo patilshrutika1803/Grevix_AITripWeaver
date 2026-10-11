@@ -5,6 +5,19 @@ import {
   saveOfflineRecord,
 } from './offlineStorage.js'
 
+export function isValidTripSnapshot(snapshot, expectedTripId) {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return false
+
+  const identifiers = [snapshot.tripId, snapshot.id].filter((value) => value !== undefined)
+  if (identifiers.length === 0
+    || identifiers.some((value) => typeof value !== 'string' || !value.trim())
+    || identifiers.some((value) => value !== identifiers[0])) {
+    return false
+  }
+
+  return expectedTripId === undefined || identifiers[0] === expectedTripId
+}
+
 function hasObjectData(value) {
   return value !== null
     && typeof value === 'object'
@@ -32,21 +45,25 @@ export function buildTripOfflineSnapshots(trip) {
   }
 
   const tripId = trip.id
-  const tripData = {
-    tripId,
-    id: tripId,
-    destination: trip.destination,
-    duration: trip.duration,
-    total_budget: trip.total_budget,
-    budget_currency: trip.budget_currency,
-    budget_breakdown: trip.budget_breakdown,
-    group_size: trip.group_size,
-    travel_dates: trip.travel_dates,
-    travel_style: trip.travel_style,
-    interests: trip.interests,
-    itinerary: trip.itinerary,
-    critic_review: trip.critic_review,
-    created_at: trip.created_at,
+  const tripData = { tripId, id: tripId }
+  const tripFields = [
+    'destination',
+    'duration',
+    'total_budget',
+    'budget_currency',
+    'budget_breakdown',
+    'group_size',
+    'travel_dates',
+    'travel_style',
+    'interests',
+    'itinerary',
+    'critic_review',
+    'created_at',
+  ]
+  for (const field of tripFields) {
+    if (trip[field] !== undefined && trip[field] !== null) {
+      tripData[field] = trip[field]
+    }
   }
   const snapshots = [{
     recordType: OFFLINE_RECORD_TYPES.TRIP,
@@ -89,7 +106,7 @@ export async function saveTripOffline(trip, storage = {
 }) {
   const snapshots = buildTripOfflineSnapshots(trip)
   const savedRecords = []
-  for (const snapshot of snapshots) {
+  for (const snapshot of [...snapshots.slice(1), snapshots[0]]) {
     savedRecords.push(await storage.saveOfflineRecord(
       snapshot.recordType,
       snapshot.key,
