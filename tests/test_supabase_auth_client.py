@@ -1,4 +1,8 @@
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 import api.v1.dependencies as dependencies
+from api.v1.trips import router as trips_router
 
 
 def test_supabase_auth_client_uses_public_anon_key_for_user_verification(monkeypatch):
@@ -26,3 +30,38 @@ def test_supabase_auth_client_uses_public_anon_key_for_user_verification(monkeyp
         "url": "https://supabase.example.test",
         "key": "public-anon-test-key",
     }
+
+
+def test_missing_bearer_token_is_rejected_before_database_access(monkeypatch):
+    calls = 0
+
+    def fail_if_called():
+        nonlocal calls
+        calls += 1
+        raise AssertionError("database must not be accessed without credentials")
+
+    monkeypatch.setattr(dependencies, "get_database", fail_if_called)
+    app = FastAPI()
+    app.include_router(trips_router)
+
+    response = TestClient(app).get("/api/v1/trips")
+
+    assert response.status_code == 401
+    assert calls == 0
+
+
+def test_database_initialization_failure_returns_sanitized_service_unavailable(monkeypatch):
+    def fail_to_connect():
+        raise RuntimeError("private MongoDB connection details")
+
+    monkeypatch.setattr(dependencies, "get_database", fail_to_connect)
+    app = FastAPI()
+    app.include_router(trips_router)
+
+    response = TestClient(app).get(
+        "/api/v1/trips",
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+    assert response.status_code == 503
+    assert "private" not in response.text

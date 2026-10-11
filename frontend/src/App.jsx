@@ -17,6 +17,7 @@ import TravelGuidePage from './pages/TravelGuidePage'
 import AdminRoute from './routes/AdminRoute'
 import InvitationAcceptPage from './pages/InvitationAcceptPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import OfflineVaultPage from './pages/OfflineVaultPage'
 import './App.css'
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/trips" element={<TripsPage />} />
               <Route path="/trips/:tripId" element={<TripDetailPage />} />
+              <Route path="/offline-vault" element={<OfflineVaultPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/preferences" element={<PreferencesPage />} />
               <Route path="/travel-guide" element={<TravelGuidePage />} />

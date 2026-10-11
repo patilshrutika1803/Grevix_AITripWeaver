@@ -1,6 +1,8 @@
 """
 Long-term memory using local persistent ChromaDB to save and retrieve past trip preferences.
 """
+import os
+
 import chromadb
 from typing import List, Optional
 from logger.logging import get_logger
@@ -8,9 +10,11 @@ from logger.logging import get_logger
 logger = get_logger(__name__)
 
 class LongTermMemory:
-    def __init__(self, persist_directory: str = "./chroma_db"):
+    def __init__(self, persist_directory: str | None = None):
         """Initializes the ChromaDB persistent client."""
-        self.client = chromadb.PersistentClient(path=persist_directory)
+        self.client = chromadb.PersistentClient(
+            path=persist_directory or os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
+        )
         self.collection = self.client.get_or_create_collection(name="trip_preferences")
 
     def save_preferences(

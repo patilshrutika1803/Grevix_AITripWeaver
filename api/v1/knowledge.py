@@ -11,8 +11,7 @@ from pydantic import BaseModel, Field
 from pymongo.database import Database
 
 from agent.knowledge_agent import knowledge_agent_node
-from api.v1.dependencies import CurrentUser, get_current_admin, get_current_user
-from database.mongodb import get_database
+from api.v1.dependencies import CurrentUser, get_authenticated_database as get_database, get_current_admin, get_current_user
 from rag.ingestion import ingest_pdf
 from rag.vector_store import get_knowledge_collection
 

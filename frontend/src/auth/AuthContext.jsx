@@ -1,21 +1,33 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { authApi } from '../api/client'
 import { AuthContext } from './context'
-import { getSupabaseClient } from './supabase'
-
-const supabase = getSupabaseClient()
+import {
+  getSupabaseClient,
+  isSupabaseConfigured,
+  SUPABASE_CONFIGURATION_ERROR,
+} from './supabase'
 
 export function AuthProvider({ children }) {
+  const supabase = useMemo(
+    () => isSupabaseConfigured() ? getSupabaseClient() : null,
+    [],
+  )
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [authError, setAuthError] = useState(null)
+  const [isLoading, setIsLoading] = useState(Boolean(supabase))
+  const [authError, setAuthError] = useState(supabase ? null : SUPABASE_CONFIGURATION_ERROR)
+  const supabaseAuth = supabase?.auth
   const currentAccessToken = useRef(null)
   const currentUserId = useRef(null)
   const loadedUserId = useRef(null)
   const loadedProfile = useRef(null)
   const profileRequest = useRef(null)
   const isMounted = useRef(true)
+
+  const requireSupabase = () => {
+    if (!supabase) throw new Error(SUPABASE_CONFIGURATION_ERROR)
+    return supabase
+  }
 
   const loadProfile = (session) => {
     const accessToken = session?.access_token
@@ -48,10 +60,12 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    if (!supabaseAuth) return undefined
+
     let active = true
     isMounted.current = true
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabaseAuth.onAuthStateChange((event, session) => {
       if (!active) return
       setAuthError(null)
       currentAccessToken.current = session?.access_token ?? null
@@ -75,7 +89,7 @@ export function AuthProvider({ children }) {
       }
     })
 
-    supabase.auth.getSession().then(async ({ data, error }) => {
+    supabaseAuth.getSession().then(async ({ data, error }) => {
       if (!active) return
       if (error) {
         setAuthError(error.message)
@@ -107,12 +121,13 @@ export function AuthProvider({ children }) {
       isMounted.current = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, [supabaseAuth])
 
   const login = async ({ email, password }) => {
+    const authClient = requireSupabase()
     setIsLoading(true)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await authClient.auth.signInWithPassword({ email, password })
       if (error) throw error
       currentAccessToken.current = data.session?.access_token ?? null
       currentUserId.current = data.session?.user?.id ?? null
@@ -125,9 +140,10 @@ export function AuthProvider({ children }) {
   }
 
   const register = async ({ name, email, password }) => {
+    const authClient = requireSupabase()
     setIsLoading(true)
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await authClient.auth.signUp({
         email,
         password,
         options: { data: { name: name.trim() } },
@@ -146,12 +162,12 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut()
+    const { error } = await requireSupabase().auth.signOut()
     if (error) throw error
   }
 
   const requestPasswordReset = async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await requireSupabase().auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/forgot-password`,
     })
     if (error) throw error
@@ -159,9 +175,10 @@ export function AuthProvider({ children }) {
   }
 
   const updatePassword = async (password) => {
-    const { error } = await supabase.auth.updateUser({ password })
+    const authClient = requireSupabase()
+    const { error } = await authClient.auth.updateUser({ password })
     if (error) throw error
-    const { error: signOutError } = await supabase.auth.signOut()
+    const { error: signOutError } = await authClient.auth.signOut()
     if (signOutError) throw signOutError
   }
 

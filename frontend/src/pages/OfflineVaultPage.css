@@ -1,0 +1,106 @@
+.offline-vault-page {
+  padding-top: 56px;
+  padding-bottom: 70px;
+}
+
+.offline-vault-page .page-title-row {
+  align-items: flex-start;
+  gap: 24px;
+  padding-bottom: 28px;
+}
+
+.offline-vault-page .page-title-row h1 {
+  margin-top: 7px;
+  font-size: clamp(42px, 6vw, 76px);
+  line-height: .98;
+  letter-spacing: -.065em;
+}
+
+.offline-vault-page .page-title-row .eyebrow {
+  margin-top: 18px;
+  color: var(--primary);
+}
+
+.offline-vault-page .offline-vault-list {
+  display: grid;
+  gap: 14px;
+}
+
+.offline-vault-card {
+  display: grid;
+  gap: 20px;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid var(--border-light);
+  border-radius: 17px;
+  background: var(--surface);
+  box-shadow: 0 8px 26px rgba(20, 20, 20, .05);
+}
+
+.offline-vault-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.offline-vault-card-heading .eyebrow {
+  color: var(--primary);
+}
+
+.offline-vault-card-heading h2 {
+  margin: 7px 0 5px;
+  font-size: clamp(25px, 4vw, 38px);
+  letter-spacing: -.04em;
+}
+
+.offline-vault-card-heading .page-lede {
+  font-size: 14px;
+}
+
+.offline-vault-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.offline-vault-actions .button {
+  min-height: 40px;
+}
+
+.offline-vault-meta {
+  display: grid;
+  gap: 11px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.offline-vault-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.offline-vault-tags span {
+  padding: 6px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  color: var(--ink);
+  background: white;
+  font-weight: 600;
+}
+
+.offline-vault-empty {
+  margin-top: 12px;
+  border-color: var(--border-light);
+  background: var(--surface);
+}
+
+@media (max-width: 640px) {
+  .offline-vault-card-heading {
+    flex-direction: column;
+  }
+
+  .offline-vault-actions {
+    width: 100%;
+  }
+}

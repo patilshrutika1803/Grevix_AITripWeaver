@@ -346,6 +346,10 @@
   background: var(--surface);
 }
 
+.trips-page .offline-save-message {
+  margin: 0 0 18px;
+}
+
 .trips-page .expense-manager {
   border: 1px solid var(--border-light);
   border-radius: 17px;

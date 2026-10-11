@@ -7,8 +7,7 @@ from pydantic import BaseModel, Field
 from pymongo.database import Database
 from pymongo.errors import PyMongoError
 
-from api.v1.dependencies import CurrentUser, get_current_admin
-from database.mongodb import get_database
+from api.v1.dependencies import CurrentUser, get_authenticated_database as get_database, get_current_admin
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 

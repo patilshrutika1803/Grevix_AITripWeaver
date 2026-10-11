@@ -6,6 +6,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 from pymongo.database import Database
 
 load_dotenv()
@@ -30,10 +31,24 @@ def get_database() -> Database[dict[str, Any]]:
         if not database_name:
             raise RuntimeError("MONGODB_DATABASE must be configured.")
 
-        client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-        client.admin.command("ping")
-        database = client[database_name]
-        _create_indexes(database)
+        client: MongoClient[dict[str, Any]] | None = None
+        try:
+            client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+            client.admin.command("ping")
+            database = client[database_name]
+            _create_indexes(database)
+        except PyMongoError:
+            if client is not None:
+                client.close()
+            raise RuntimeError(
+                "MongoDB initialization failed. Verify MONGODB_URI, Atlas network access, "
+                "database credentials, and that existing data permits the required indexes."
+            ) from None
+        except Exception:
+            if client is not None:
+                client.close()
+            raise
+
         _client = client
         _database = database
         return database

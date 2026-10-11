@@ -44,6 +44,26 @@ def _get_supabase_client() -> Client:
         return _supabase
 
 
+def _require_bearer(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> HTTPAuthorizationCredentials:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.")
+    return credentials
+
+
+def get_authenticated_database(
+    _: HTTPAuthorizationCredentials = Depends(_require_bearer),
+) -> Database:
+    try:
+        return get_database()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Application database is temporarily unavailable.",
+        ) from exc
+
+
 def _profile_for_token(token: str, database: Database) -> CurrentUser:
     try:
         response = _get_supabase_client().auth.get_user(token)
@@ -88,20 +108,37 @@ def _profile_for_token(token: str, database: Database) -> CurrentUser:
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
-    database: Database = Depends(get_database),
+    credentials: HTTPAuthorizationCredentials = Depends(_require_bearer),
+    database: Database = Depends(get_authenticated_database),
 ) -> CurrentUser:
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.")
     return _profile_for_token(credentials.credentials, database)
+
+
+def _get_optional_database(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> Database | None:
+    if credentials is None:
+        return None
+    try:
+        return get_database()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Application database is temporarily unavailable.",
+        ) from exc
 
 
 def get_optional_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
-    database: Database = Depends(get_database),
+    database: Database | None = Depends(_get_optional_database),
 ) -> CurrentUser | None:
     if credentials is None:
         return None
+    if database is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Application database is temporarily unavailable.",
+        )
     return _profile_for_token(credentials.credentials, database)
 
 

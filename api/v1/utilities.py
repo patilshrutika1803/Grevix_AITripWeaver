@@ -8,8 +8,7 @@ from urllib.parse import quote_plus
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pymongo.database import Database
 
-from api.v1.dependencies import CurrentUser, get_current_user
-from database.mongodb import get_database
+from api.v1.dependencies import CurrentUser, get_authenticated_database as get_database, get_current_user
 from models.api_schemas import ItineraryCSPRequest, ItineraryGARequest, RouteOptimizationRequest
 from services.collaboration_service import AccessDenied, TripAccessService
 from services.route_optimization import (

@@ -26,7 +26,7 @@ export default function Navbar() {
         <NavLink to="/trips" onClick={close}>My trips</NavLink>
         <span className="nav-divider" />
         {logoutError && <p className="form-error" role="alert">{logoutError}</p>}
-        {isAuthenticated ? <><NavLink to="/travel-guide" onClick={close}>Travel Guide</NavLink><NavLink to="/profile" onClick={close}>{user?.name || 'Profile'}</NavLink><NavLink to="/preferences" onClick={close}>Preferences</NavLink>{user?.is_admin && <><NavLink to="/admin" onClick={close}>Admin</NavLink><NavLink to="/admin/knowledge" onClick={close}>Knowledge</NavLink></>}<button className="nav-logout" onClick={handleLogout}>Log out</button></> : <Link className="button button-small" to="/login" onClick={close}>Log in</Link>}
+        {isAuthenticated ? <><NavLink to="/travel-guide" onClick={close}>Travel Guide</NavLink><NavLink to="/offline-vault" onClick={close}>Offline Vault</NavLink><NavLink to="/profile" onClick={close}>{user?.name || 'Profile'}</NavLink><NavLink to="/preferences" onClick={close}>Preferences</NavLink>{user?.is_admin && <><NavLink to="/admin" onClick={close}>Admin</NavLink><NavLink to="/admin/knowledge" onClick={close}>Knowledge</NavLink></>}<button className="nav-logout" onClick={handleLogout}>Log out</button></> : <Link className="button button-small" to="/login" onClick={close}>Log in</Link>}
       </nav>
     </header>
   )

@@ -88,6 +88,21 @@ async def generic_exception_handler(request, exc: Exception):
     message = PREFERENCE_ERROR_MESSAGE if request.url.path.startswith("/api/v1/users/me/preferences") else GENERIC_ERROR_MESSAGE
     return JSONResponse(status_code=500, content={"error": message})
 
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/health/ready", response_model=None)
+def readiness() -> JSONResponse | dict[str, str]:
+    try:
+        get_database()
+    except RuntimeError as exc:
+        return JSONResponse(status_code=503, content={"status": "not_ready", "error": str(exc)})
+    return {"status": "ready", "database": "connected"}
+
+
 class PlanRequest(BaseModel):
     question: str
     thread_id: Optional[str] = None

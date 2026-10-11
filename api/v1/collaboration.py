@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pymongo.database import Database
 
-from api.v1.dependencies import CurrentUser, get_current_user
-from database.mongodb import get_database
+from api.v1.dependencies import CurrentUser, get_authenticated_database as get_database, get_current_user
+from database.mongodb import get_database as get_public_database
 from models.api_schemas import (ChecklistItemCreateRequest, ChecklistItemResponse, ChecklistItemUpdateRequest, DecisionResponse, InvitationAcceptResponse, InvitationCreateRequest, InvitationPreviewResponse, InvitationResponse, MessageCreateRequest, MessagePageResponse, MessageResponse, NotificationListResponse, NotificationResponse, OwnershipTransferRequest, ProposalCreateRequest, ProposalListResponse, ProposalResponse, ProposalResultResponse, ProposalUpdateRequest, TripMemberListResponse, TripMemberResponse, TripMemberRoleUpdateRequest, VoteRequest, VoteResponse, WorkspaceResponse)
 from services.collaboration_service import AccessDenied, CollaborationService, GroupTripService, ProposalService, as_utc, proposal_result
 
@@ -110,7 +110,7 @@ def accept(token: str, db: Database = Depends(get_database), user: CurrentUser =
     except AccessDenied as exc: fail(exc)
 
 @router.get("/invitations/{token}", response_model=InvitationPreviewResponse)
-def invitation_preview(token: str, db: Database = Depends(get_database)):
+def invitation_preview(token: str, db: Database = Depends(get_public_database)):
     try: return InvitationPreviewResponse(**GroupTripService(db).invitation_preview(token))
     except AccessDenied as exc: fail(exc, "This invitation is no longer active.")
 
