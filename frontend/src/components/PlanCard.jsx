@@ -4,7 +4,7 @@ import { formatCurrency, resolveCurrency } from '../utils/currency'
 import { Link } from 'react-router-dom'
 import './PlanCard.css'
 
-export default function PlanCard({ plan, onRegenerate }) {
+export default function PlanCard({ plan, onRegenerate, regeneratingDay = null, onUpdateAttraction }) {
   const { itinerary = [], budget, critic_review, weather, preferences } = plan
   const currency = resolveCurrency(plan)
   const mapStops = itinerary.flatMap(day => (Array.isArray(day.attractions) ? day.attractions : [])
@@ -39,7 +39,7 @@ export default function PlanCard({ plan, onRegenerate }) {
         </div>
         {itinerary.length === 0
           ? <div className="empty-itinerary"><span className="empty-icon">Map</span><p className="empty-title">Itinerary generation failed</p><p className="empty-sub">{critic_review?.warnings?.[0] ?? 'The AI could not build an itinerary for this query. Try rephrasing or reducing the number of days.'}</p></div>
-          : itinerary.map((day, index) => <DayCard key={day.day_number} day={day} index={index} currency={currency} onRegenerate={onRegenerate} />)}
+          : itinerary.map((day, index) => <DayCard key={day.day_number} day={day} index={index} currency={currency} onRegenerate={onRegenerate} regeneratingDay={regeneratingDay} onUpdateAttraction={onUpdateAttraction} />)}
       </div>
       <div className="map-panel">
         <div className="map-panel-top">

@@ -137,6 +137,9 @@ PROVIDER_FAILURE_MARKERS = (
 def _workflow_failure_message(state: dict) -> str:
     failure_reasons = state.get("failure_reasons", {})
     reason_text = " ".join(str(reason).lower() for reason in failure_reasons.values())
+    itinerary_failure = str(failure_reasons.get("ItineraryAgent", "")).lower()
+    if "itinerary recovery failed" in itinerary_failure:
+        return "The itinerary could not be generated with the requested number of days. Please try again."
     if any(marker in reason_text for marker in PROVIDER_FAILURE_MARKERS):
         return "The trip planner is temporarily unavailable because an AI service could not respond. Check provider credentials or quota and try again."
     return "Workflow failed validation."

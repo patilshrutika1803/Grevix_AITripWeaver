@@ -16,6 +16,7 @@ langgraph
 langgraph-checkpoint
 langchain-google-community[places]
 chromadb
+python-multipart
 pypdf>=4.3.1
 sentence-transformers>=3.1.1
 sse-starlette

@@ -7,11 +7,13 @@ from api.v1.dependencies import CurrentUser, get_authenticated_database as get_d
 from models.api_schemas import (
     DeleteTripResponse,
     TripCreateRequest,
+    TripAttractionUpdateRequest,
+    TripAttractionUpdateResponse,
     TripDayRegenerationResponse,
     TripResponse,
     TripUpdateRequest,
 )
-from services.trip_service import DayNotFoundError, TripNotFoundError, TripService
+from services.trip_service import AttractionNotFoundError, DayNotFoundError, TripNotFoundError, TripService
 from services.collaboration_service import AccessDenied, TripAccessService
 
 router = APIRouter(prefix="/api/v1", tags=["Trips"])
@@ -81,6 +83,35 @@ def update_trip(
     if updated is None:
         _raise_trip_not_found()
     return TripResponse.model_validate(updated)
+
+
+@router.patch(
+    "/trips/{trip_id}/days/{day_number}/attractions/{attraction_index}",
+    response_model=TripAttractionUpdateResponse,
+)
+def update_trip_attraction(
+    trip_id: str,
+    day_number: int,
+    attraction_index: int,
+    payload: TripAttractionUpdateRequest,
+    database: Database = Depends(get_database),
+    user: CurrentUser = Depends(get_current_user),
+) -> TripAttractionUpdateResponse:
+    try:
+        TripAccessService(database).require_can_edit_trip(trip_id, user.id)
+    except AccessDenied:
+        _raise_trip_not_found()
+
+    try:
+        result = TripService(database).update_attraction(
+            trip_id,
+            day_number,
+            attraction_index,
+            payload.model_dump(),
+        )
+    except (TripNotFoundError, DayNotFoundError, AttractionNotFoundError) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return TripAttractionUpdateResponse.model_validate(result)
 
 
 @router.patch("/trips/{trip_id}/days/{day_number}/regenerate", response_model=TripDayRegenerationResponse)

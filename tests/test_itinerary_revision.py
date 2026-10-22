@@ -55,9 +55,9 @@ def _day(day_number, theme):
     )
 
 
-def _agent_state(critic_review=None, itinerary=None):
+def _agent_state(critic_review=None, itinerary=None, duration=5):
     return {
-        "preferences": _preferences(),
+        "preferences": _preferences(duration),
         "weather_info": None,
         "budget_breakdown": BudgetBreakdown(
             total_estimated=40000,
@@ -204,17 +204,161 @@ def test_workflow_finishes_with_or_without_critic_revision(
 
 
 def test_itinerary_agent_rejects_wrong_day_count(monkeypatch):
+    responses = iter(
+        [
+            itinerary_module.ItineraryOutput(
+                itinerary=[_day(day_number, f"Day {day_number}") for day_number in range(1, 4)]
+            ),
+            itinerary_module.ItineraryOutput(itinerary=[]),
+        ]
+    )
     monkeypatch.setattr(
         itinerary_module,
         "invoke_with_fallback",
-        lambda *_args, **_kwargs: itinerary_module.ItineraryOutput(itinerary=[_day(1, "One day")]),
+        lambda *_args, **_kwargs: next(responses),
     )
 
-    result = itinerary_module.itinerary_agent_node(_agent_state())
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
 
     assert result["itinerary"] is None
     assert result["failed_agents"] == ["ItineraryAgent"]
-    assert "expected exactly 5" in result["failure_reasons"]["ItineraryAgent"]
+    assert result["failure_reasons"]["ItineraryAgent"] == (
+        "Itinerary recovery failed: returned 0 days numbered []; "
+        "expected exactly 1 missing day(s) numbered [4]."
+    )
+
+
+def test_four_day_itinerary_succeeds_without_recovery(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        itinerary_module,
+        "invoke_with_fallback",
+        lambda *_args, **_kwargs: (
+            calls.append(True)
+            or itinerary_module.ItineraryOutput(
+                itinerary=[_day(day_number, f"Day {day_number}") for day_number in range(1, 5)]
+            )
+        ),
+    )
+
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
+
+    assert result["completed_agents"] == ["ItineraryAgent"]
+    assert [day["day_number"] for day in result["itinerary"]] == [1, 2, 3, 4]
+    assert len(calls) == 1
+
+
+def test_four_day_itinerary_recovers_only_missing_day_and_preserves_request(monkeypatch):
+    preferences = _preferences(4).model_copy(
+        update={
+            "travel_dates": "June 1-4, 2027",
+            "group_size": 2,
+            "interests": ["history", "food"],
+            "things_to_avoid": ["crowds"],
+        }
+    )
+    state = _agent_state(duration=4)
+    state["preferences"] = preferences
+    responses = iter(
+        [
+            itinerary_module.ItineraryOutput(
+                itinerary=[_day(day_number, f"Day {day_number}") for day_number in range(1, 4)]
+            ),
+            itinerary_module.ItineraryOutput(itinerary=[_day(4, "Departure")]),
+        ]
+    )
+    prompts = []
+
+    def invoke(_builder, messages, **_kwargs):
+        prompts.append(messages[1].content)
+        return next(responses)
+
+    monkeypatch.setattr(itinerary_module, "invoke_with_fallback", invoke)
+
+    result = itinerary_module.itinerary_agent_node(state)
+
+    assert result["completed_agents"] == ["ItineraryAgent"]
+    assert [day["day_number"] for day in result["itinerary"]] == [1, 2, 3, 4]
+    assert len(prompts) == 2
+    for prompt in prompts:
+        assert "Destination: Udaipur" in prompt
+        assert "Duration: 4 days" in prompt
+        assert "Travel dates: June 1-4, 2027" in prompt
+        assert "Requested budget: 40000 INR" in prompt
+        assert "Travelers: 2" in prompt
+        assert "Interests: history, food" in prompt
+        assert "Things to avoid: crowds" in prompt
+    assert "only for day number(s) [4]" in prompts[1]
+    assert "Do not repeat or rewrite the existing days" in prompts[1]
+
+
+def test_four_day_recovery_rejects_duplicate_or_misnumbered_day(monkeypatch):
+    responses = iter(
+        [
+            itinerary_module.ItineraryOutput(
+                itinerary=[_day(day_number, f"Day {day_number}") for day_number in range(1, 4)]
+            ),
+            itinerary_module.ItineraryOutput(itinerary=[_day(3, "Duplicate day")]),
+        ]
+    )
+    monkeypatch.setattr(
+        itinerary_module,
+        "invoke_with_fallback",
+        lambda *_args, **_kwargs: next(responses),
+    )
+
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
+
+    assert result["itinerary"] is None
+    assert result["failed_agents"] == ["ItineraryAgent"]
+    assert result["failure_reasons"]["ItineraryAgent"] == (
+        "Itinerary recovery failed: returned 1 days numbered [3]; "
+        "expected exactly 1 missing day(s) numbered [4]."
+    )
+
+
+def test_duplicate_initial_day_numbers_trigger_full_recovery(monkeypatch):
+    responses = iter(
+        [
+            itinerary_module.ItineraryOutput(
+                itinerary=[
+                    _day(1, "Day 1"),
+                    _day(2, "Day 2"),
+                    _day(2, "Duplicate day 2"),
+                    _day(4, "Day 4"),
+                ]
+            ),
+            itinerary_module.ItineraryOutput(
+                itinerary=[_day(day_number, f"Corrected day {day_number}") for day_number in range(1, 5)]
+            ),
+        ]
+    )
+    prompts = []
+
+    def invoke(_builder, messages, **_kwargs):
+        prompts.append(messages[1].content)
+        return next(responses)
+
+    monkeypatch.setattr(itinerary_module, "invoke_with_fallback", invoke)
+
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
+
+    assert result["completed_agents"] == ["ItineraryAgent"]
+    assert [day["day_number"] for day in result["itinerary"]] == [1, 2, 3, 4]
+    assert "Regenerate the complete itinerary" in prompts[1]
+    assert "only for day number(s)" not in prompts[1]
+
+
+def test_workflow_failure_message_explains_duration_recovery_failure():
+    assert main._workflow_failure_message(
+        {
+            "failure_reasons": {
+                "ItineraryAgent": (
+                    "Itinerary recovery failed: returned 2 days; expected exactly 4."
+                )
+            }
+        }
+    ) == "The itinerary could not be generated with the requested number of days. Please try again."
 
 
 def test_revision_failure_is_returned_as_agent_failure(monkeypatch):

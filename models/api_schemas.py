@@ -85,6 +85,39 @@ class TripDayRegenerationResponse(BaseModel):
     updated_at: datetime
 
 
+class TripAttractionUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=300)
+    description: str = Field(max_length=2000)
+    time: str = Field(min_length=1, max_length=300)
+    cost: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+
+    @field_validator("title", "time")
+    @classmethod
+    def require_non_whitespace(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("This value cannot be blank.")
+        return value.strip()
+
+    @field_validator("cost")
+    @classmethod
+    def require_finite_cost(cls, value: Decimal) -> Decimal:
+        if not value.is_finite():
+            raise ValueError("Cost must be a finite number.")
+        return value
+
+
+class TripAttractionUpdateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    trip_id: str
+    day_number: int
+    attraction_index: int
+    attraction: dict[str, Any]
+    updated_at: datetime
+
+
 class RouteOptimizationRequest(BaseModel):
     start_location_id: str | None = Field(default=None, min_length=1, max_length=100)
     goal_location_id: str | None = Field(default=None, min_length=1, max_length=100)
@@ -233,8 +266,12 @@ def _validate_journal_media_references(references: list[str]) -> list[str]:
     from urllib.parse import urlsplit
 
     normalized = [reference.strip() for reference in references]
+    normalized = [reference for reference in normalized if reference]
     for reference in normalized:
-        parsed = urlsplit(reference)
+        try:
+            parsed = urlsplit(reference)
+        except ValueError:
+            raise ValueError("Media references must be absolute HTTP or HTTPS URLs.") from None
         if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
             raise ValueError("Media references must be absolute HTTP or HTTPS URLs.")
     return normalized

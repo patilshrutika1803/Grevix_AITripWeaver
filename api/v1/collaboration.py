@@ -32,20 +32,25 @@ def proposal_out(proposal):
 
 
 def _message_cursor(created_at: datetime, message_id: str) -> str:
-    value = f"{created_at.isoformat()}|{message_id}".encode()
+    value = f"{as_utc(created_at).isoformat()}|{message_id}".encode()
     return base64.urlsafe_b64encode(value).decode()
 
 
 def _parse_message_cursor(cursor: str) -> tuple[datetime, str]:
     try:
         created_at, message_id = base64.urlsafe_b64decode(cursor.encode()).decode().split("|", 1)
-        return datetime.fromisoformat(created_at), message_id
+        return as_utc(datetime.fromisoformat(created_at)), message_id
     except (ValueError, UnicodeDecodeError) as exc:
         raise HTTPException(status_code=422, detail="Invalid message cursor.") from exc
 
 
 def message_out(message: dict, sender_name: str | None) -> MessageResponse:
-    response = MessageResponse.model_validate(message)
+    normalized_message = dict(message)
+    for field in ("created_at", "edited_at", "deleted_at"):
+        value = normalized_message.get(field)
+        if isinstance(value, datetime):
+            normalized_message[field] = as_utc(value)
+    response = MessageResponse.model_validate(normalized_message)
     response.sender_name = sender_name
     return response
 

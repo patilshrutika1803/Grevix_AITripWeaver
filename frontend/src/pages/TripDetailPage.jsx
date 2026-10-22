@@ -56,6 +56,8 @@ export default function TripDetailPage() {
   const [offlineSaveState, setOfflineSaveState] = useState('idle')
   const [offlineSaveError, setOfflineSaveError] = useState('')
   const [loadedOffline, setLoadedOffline] = useState(false)
+  const [regeneratingDay, setRegeneratingDay] = useState(null)
+  const [regenerationError, setRegenerationError] = useState('')
   const [workspace, setWorkspace] = useState(null)
   const [workspaceError, setWorkspaceError] = useState('')
   const [tab, setTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'overview')
@@ -75,6 +77,7 @@ export default function TripDetailPage() {
   const [proposalResults, setProposalResults] = useState({})
   const [sectionLoading, setSectionLoading] = useState(false)
   const refreshGeneration = useRef(0)
+  const regenerationInFlight = useRef(false)
   const canManageInvitations = workspace?.members.some(member => member.user_id === user?.id && ['owner', 'admin'].includes(member.role)) ?? false
   useEffect(() => {
     let active = true
@@ -277,12 +280,60 @@ export default function TripDetailPage() {
     setProposalResults(Object.fromEntries(entries))
   }
   const regenerate = async (dayNumber) => {
-    setMessage('Regenerating day...'); setError('')
+    if (regenerationInFlight.current) return
+    if (globalThis.navigator?.onLine === false) {
+      setRegenerationError('Connect to the internet to regenerate this day.')
+      setMessage('')
+      return
+    }
+    regenerationInFlight.current = true
+    setRegeneratingDay(dayNumber)
+    setRegenerationError('')
+    setMessage(`Regenerating day ${dayNumber}...`)
     try {
       const result = await tripsApi.regenerateDay(tripId, dayNumber)
-      setTrip(current => ({ ...current, itinerary: current.itinerary.map(day => day.day_number === dayNumber ? result.regenerated_day : day), updated_at: result.updated_at }))
+      if (result.trip_id !== tripId || result.day_number !== dayNumber || !result.regenerated_day) {
+        throw new Error('The server returned an invalid regenerated day.')
+      }
+      setTrip(current => current
+        ? {
+            ...current,
+            itinerary: current.itinerary.map(day => day.day_number === dayNumber ? result.regenerated_day : day),
+            updated_at: result.updated_at,
+          }
+        : current)
       setMessage(`Day ${dayNumber} regenerated successfully.`)
-    } catch (err) { setError(err.message); setMessage('') }
+    } catch (err) {
+      setRegenerationError(err.message || 'Unable to regenerate this day. Please try again.')
+      setMessage('')
+    } finally {
+      regenerationInFlight.current = false
+      setRegeneratingDay(null)
+    }
+  }
+  const updateAttraction = async (dayNumber, attractionIndex, updates) => {
+    const result = await tripsApi.updateAttraction(tripId, dayNumber, attractionIndex, updates)
+    if (
+      result.trip_id !== tripId ||
+      result.day_number !== dayNumber ||
+      result.attraction_index !== attractionIndex ||
+      !result.attraction?.place
+    ) {
+      throw new Error('The server returned an invalid activity update.')
+    }
+    setTrip(current => current
+      ? {
+          ...current,
+          itinerary: current.itinerary.map(day => day.day_number === dayNumber
+            ? {
+                ...day,
+                attractions: day.attractions.map((attraction, index) =>
+                  index === attractionIndex ? result.attraction : attraction),
+              }
+            : day),
+          updated_at: result.updated_at,
+        }
+      : current)
   }
   const convert = async () => { try { setWorkspace(await groupTripsApi.convert(tripId)) } catch (err) { setError(err.message) } }
   const createProposal = async payload => { try { await proposalsApi.create(tripId, payload); await refreshProposals(); setTab('proposals') } catch (err) { setError(err.message) } }
@@ -314,6 +365,6 @@ export default function TripDetailPage() {
   if (error || !trip) return <section className="page-container placeholder"><p className="form-error" role="alert">{error || 'Trip not found.'}</p><Link className="button button-primary" to="/trips">Back to My Trips</Link></section>
   const tabs = workspace ? GROUP_TABS : TRIP_TABS
   const currentMember = workspace?.members.find(member => member.user_id === user?.id)
-  return <section className={`page-container trips-page${workspace ? ' group-workspace-page' : ''}`}><div className="page-title-row"><div><Link to="/trips" className="text-button">← My trips</Link><p className="eyebrow">{workspace ? 'Group workspace' : 'Saved trip'}</p><h1>{trip.destination}</h1><p className="page-lede">Created {new Date(trip.created_at).toLocaleDateString()}</p></div><div>{!workspace && <button className="button button-primary" onClick={convert}>Convert to group</button>}<button className="button button-quiet" onClick={saveForOffline} disabled={offlineSaveState === 'saving'}>{offlineSaveState === 'saving' ? 'Saving...' : offlineSaveState === 'saved' ? 'Saved for Offline' : 'Save for Offline'}</button><button className="button button-quiet" onClick={remove}>Delete trip</button></div></div>{loadedOffline && <p className="page-lede" role="status">This trip is currently loaded from its offline download.</p>}{offlineSaveError && <p className="form-error offline-save-message" role="alert">{offlineSaveError}</p>}{workspaceError && <p className="form-error" role="alert">{workspaceError}</p>}{offlineSaveState === 'saved' && <p className="form-success offline-save-message" role="status">Trip and available details saved on this device.</p>}{message && <p className="page-lede" role="status">{message}</p>}<nav className="trip-tabs" aria-label="Trip workspace"><div>{tabs.map(item => <button key={item} className={tab === item ? 'button button-primary' : 'button button-quiet'} onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}</button>)}</div></nav>{tab === 'overview' && (workspace ? <><GroupOverview workspace={workspace} onOpenTab={setTab} /><PlanCard plan={tripToPlan(trip)} onRegenerate={regenerate} /></> : <><PlanCard plan={tripToPlan(trip)} onRegenerate={regenerate} /><ExpenseManager tripId={tripId} members={[{ user_id: user?.id, user: { name: user?.name }, status: 'active' }]} user={user} currency={trip.budget_currency} /></>)}{tab === 'journal' && <TripJournal trip={trip} user={user} />}{tab === 'utilities' && <TripUtilities trip={trip} />}{tab === 'expenses' && workspace && <ExpenseManager tripId={tripId} members={workspace.members} user={user} currentRole={currentMember?.role} currency={trip.budget_currency} />}
+  return <section className={`page-container trips-page${workspace ? ' group-workspace-page' : ''}`}><div className="page-title-row"><div><Link to="/trips" className="text-button">← My trips</Link><p className="eyebrow">{workspace ? 'Group workspace' : 'Saved trip'}</p><h1>{trip.destination}</h1><p className="page-lede">Created {new Date(trip.created_at).toLocaleDateString()}</p></div><div>{!workspace && <button className="button button-primary" onClick={convert}>Convert to group</button>}<button className="button button-quiet" onClick={saveForOffline} disabled={offlineSaveState === 'saving'}>{offlineSaveState === 'saving' ? 'Saving...' : offlineSaveState === 'saved' ? 'Saved for Offline' : 'Save for Offline'}</button><button className="button button-quiet" onClick={remove}>Delete trip</button></div></div>{loadedOffline && <p className="page-lede" role="status">This trip is currently loaded from its offline download.</p>}{offlineSaveError && <p className="form-error offline-save-message" role="alert">{offlineSaveError}</p>}{workspaceError && <p className="form-error" role="alert">{workspaceError}</p>}{offlineSaveState === 'saved' && <p className="form-success offline-save-message" role="status">Trip and available details saved on this device.</p>}{regenerationError && <p className="form-error" role="alert">{regenerationError}</p>}{message && <p className="page-lede" role="status">{message}</p>}<nav className="trip-tabs" aria-label="Trip workspace"><div>{tabs.map(item => <button key={item} className={tab === item ? 'button button-primary' : 'button button-quiet'} onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}</button>)}</div></nav>{tab === 'overview' && (workspace ? <><GroupOverview workspace={workspace} onOpenTab={setTab} /><PlanCard plan={tripToPlan(trip)} onRegenerate={regenerate} regeneratingDay={regeneratingDay} onUpdateAttraction={updateAttraction} /></> : <><PlanCard plan={tripToPlan(trip)} onRegenerate={regenerate} regeneratingDay={regeneratingDay} onUpdateAttraction={updateAttraction} /><ExpenseManager tripId={tripId} members={[{ user_id: user?.id, user: { name: user?.name }, status: 'active' }]} user={user} currency={trip.budget_currency} /></>)}{tab === 'journal' && <TripJournal trip={trip} user={user} />}{tab === 'utilities' && <TripUtilities trip={trip} />}{tab === 'expenses' && workspace && <ExpenseManager tripId={tripId} members={workspace.members} user={user} currentRole={currentMember?.role} currency={trip.budget_currency} />}
 {tab === 'members' && <GroupMembers workspace={workspace} user={user} inviteEmail={inviteEmail} setInviteEmail={setInviteEmail} invite={invite} leave={leave} transfer={transfer} updateMember={updateMember} removeMember={removeMember} />} {tab === 'members' && workspace && <GroupInvitations invitations={invitations} revokeInvitation={revokeInvitation} />}{tab === 'proposals' && <GroupProposals proposals={proposals} results={proposalResults} createProposal={createProposal} vote={(id, choice) => mutateProposal(proposalsApi.vote, id, choice).then(() => setMessage('Vote recorded.'))} removeVote={id => mutateProposal(proposalsApi.removeVote, id)} close={id => mutateProposal(proposalsApi.close, id)} updateProposal={proposal => mutateProposal(proposalsApi.update, proposal.id, { title: window.prompt('Proposal title', proposal.title) || proposal.title })} canManage={currentMember?.role !== 'member'} finalize={id => proposalsApi.finalize(id).then(() => setTab('decisions')).catch(err => setError(err.message))} />}{tab === 'checklist' && <GroupChecklist checklist={checklist} workspace={workspace} draft={draft} setDraft={setDraft} description={checklistDescription} setDescription={setChecklistDescription} assignee={checklistAssignee} setAssignee={setChecklistAssignee} dueAt={checklistDueAt} setDueAt={setChecklistDueAt} addChecklist={addChecklist} updateChecklist={updateChecklist} editChecklist={editChecklist} assignChecklist={assignChecklist} deleteChecklist={deleteChecklist} filter={checklistFilter} setFilter={setChecklistFilter} loading={sectionLoading} error={error} />}{tab === 'chat' && <GroupChat messages={messages} draft={draft} setDraft={setDraft} sendMessage={sendMessage} editMessage={editMessage} deleteMessage={deleteMessage} loadOlder={loadOlderMessages} hasMore={Boolean(messageCursor)} loading={sectionLoading} error={error} canChat={Boolean(currentMember)} userId={user?.id} canModerate={currentMember?.role === 'owner' || currentMember?.role === 'admin'} />}{tab === 'decisions' && <GroupDecisions decisions={decisions} applyDecision={applyDecision} replanDecision={replanDecision} />}{tab === 'notifications' && <GroupNotifications notifications={notifications} readAll={readAllNotifications} read={readNotification} openNotification={openNotification} loading={sectionLoading} error={error} />}</section>
 }

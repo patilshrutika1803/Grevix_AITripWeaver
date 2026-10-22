@@ -440,12 +440,10 @@ def test_plan_db_failure_does_not_expose_raw_database_error(monkeypatch, isolate
 
     monkeypatch.setattr(main_module.GraphBuilder, "build_graph", lambda self: FakeGraph())
 
-    from services.trip_service import TripService
-
     def raise_db_error(self, travel_plan):
         raise RuntimeError("database exploded")
 
-    monkeypatch.setattr(TripService, "create_trip", raise_db_error)
+    monkeypatch.setattr(main_module.TripService, "create_trip", raise_db_error)
 
     client = TestClient(main_module.app)
     response = client.post("/plan", json={"question": "Plan a trip"})

@@ -6,6 +6,7 @@ const API_BASE_URL = ((API_ENVIRONMENT.VITE_API_BASE_URL || processEnvironment.V
 const PREFERENCE_ERROR = 'Unable to save your preferences. Please try again.'
 const PREFERENCE_VALIDATION_ERROR = 'Some preference values are invalid. Please check your selections.'
 const PREFERENCE_FIELDS = ['travel_style', 'interests', 'things_to_avoid', 'budget_preference', 'hotel_preference', 'food_preference', 'preferred_destinations', 'preferred_budget_min', 'preferred_budget_max', 'preferred_currency', 'preferred_trip_duration', 'is_domestic']
+const ITINERARY_REGENERATION_TIMEOUT_MS = 120_000
 
 export function apiUrl(path) {
   if (!API_BASE_URL && API_ENVIRONMENT.PROD) {
@@ -65,8 +66,24 @@ export const tripsApi = {
   get: (id) => request(`/trips/${id}`),
   create: (payload) => request('/trips', { method: 'POST', body: JSON.stringify(payload) }),
   update: (id, payload) => request(`/trips/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  updateAttraction: (id, dayNumber, attractionIndex, payload) => request(
+    `/trips/${id}/days/${dayNumber}/attractions/${attractionIndex}`,
+    { method: 'PATCH', body: JSON.stringify(payload) },
+  ),
   remove: (id) => request(`/trips/${id}`, { method: 'DELETE' }),
-  regenerateDay: (id, dayNumber) => request(`/trips/${id}/days/${dayNumber}/regenerate`, { method: 'PATCH' }),
+  regenerateDay: async (id, dayNumber) => {
+    try {
+      return await request(`/trips/${id}/days/${dayNumber}/regenerate`, {
+        method: 'PATCH',
+        signal: AbortSignal.timeout(ITINERARY_REGENERATION_TIMEOUT_MS),
+      })
+    } catch (error) {
+      if (error?.name === 'TimeoutError') {
+        throw new Error('Day regeneration timed out. Refresh the trip before trying again.')
+      }
+      throw error
+    }
+  },
   packing: (id) => request(`/trips/${id}/utilities/packing`),
   map: (id) => request(`/trips/${id}/utilities/map`),
   routeLocations: (id) => request(`/trips/${id}/route/locations`),

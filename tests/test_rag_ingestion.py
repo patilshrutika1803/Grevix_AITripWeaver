@@ -1,4 +1,3 @@
-from pathlib import Path
 from types import SimpleNamespace
 
 import chromadb
@@ -6,6 +5,7 @@ import pytest
 
 from rag.chunking import PageText, chunk_pages
 from rag.ingestion import chunk_id, document_id_for_path, extract_pdf_pages, ingest_pdf
+from tests.rag_test_utils import write_text_pdf
 
 
 class FakeMongoCollection:
@@ -46,14 +46,23 @@ def test_chunking_preserves_pages_and_overlap():
 
 
 def test_pdf_extraction_and_invalid_inputs(tmp_path):
-    sample = Path("test-data/Goa-Travel-Guide.pdf")
     pdf = tmp_path / "guide.pdf"
-    pdf.write_bytes(sample.read_bytes())
+    write_text_pdf(
+        pdf,
+        [
+            "Goa has a distinct north, central, and south region.",
+            "Travelers can reach Goa by air, rail, and road.",
+            "The monsoon season brings heavy rain.",
+            "Winter is a popular season for a Goa visit.",
+            "North Goa has several well-known beaches.",
+        ],
+    )
     pages = extract_pdf_pages(pdf, "doc")
     assert len(pages) == 5
     assert pages[0].page == 1
     assert pages[0].filename == "guide.pdf"
     assert pages[0].document_id == "doc"
+    assert "Goa" in pages[0].text
     with pytest.raises(FileNotFoundError):
         extract_pdf_pages(tmp_path / "missing.pdf")
     txt = tmp_path / "guide.txt"
@@ -63,9 +72,17 @@ def test_pdf_extraction_and_invalid_inputs(tmp_path):
 
 
 def test_ingestion_indexes_and_reindexes_without_touching_preferences(tmp_path, monkeypatch):
-    source_pdf = Path("test-data/Goa-Travel-Guide.pdf")
-    pdf = tmp_path / source_pdf.name
-    pdf.write_bytes(source_pdf.read_bytes())
+    pdf = tmp_path / "Goa-Travel-Guide.pdf"
+    write_text_pdf(
+        pdf,
+        [
+            "North Goa beaches include Keri and Arambol.",
+            "Central Goa includes Panaji and Old Goa.",
+            "South Goa has quiet beaches and nature reserves.",
+            "Travel to Goa by air, train, or road.",
+            "October through March is a popular time to visit Goa.",
+        ],
+    )
     monkeypatch.setenv("RAG_CHUNK_SIZE", "500")
     monkeypatch.setenv("RAG_CHUNK_OVERLAP", "60")
     chroma_path = tmp_path / "chroma"
@@ -94,7 +111,7 @@ def test_ingestion_indexes_and_reindexes_without_touching_preferences(tmp_path, 
     assert len(stored["ids"]) == result["chunks"]
     assert all(metadata["destination"] == "goa" for metadata in stored["metadatas"])
     assert all(metadata["category"] == "travel_guide" and metadata["document_type"] == "destination_guide" for metadata in stored["metadatas"])
-    assert all(metadata["filename"] == source_pdf.name and metadata["page"] >= 1 for metadata in stored["metadatas"])
+    assert all(metadata["filename"] == pdf.name and metadata["page"] >= 1 for metadata in stored["metadatas"])
     assert all(item.startswith(result["document_id"] + ":") for item in stored["ids"])
     assert document_id_for_path(pdf) == result["document_id"]
     assert chunk_id(result["document_id"], 1, 0) in stored["ids"]

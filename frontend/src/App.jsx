@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
+import PreferencesProvider from './preferences/PreferencesContext'
 import Navbar from './components/ui/Navbar'
 import Footer from './components/ui/Footer'
 import LandingPage from './pages/LandingPage'
@@ -31,35 +32,37 @@ export default function App() {
   ].includes(location.pathname)
   return (
     <AuthProvider>
-      <div className="site-shell">
-        {!isAuthPage && <Navbar />}
-        <main className="site-main">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/explore" element={<ExplorePage />} />
-            <Route path="/plan" element={<PlannerPage />} />
-            <Route path="/login" element={<AuthPage mode="login" />} />
-            <Route path="/register" element={<AuthPage mode="register" />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/auth/callback" element={<AuthCallbackPage />} />
-            <Route path="/invitations/:token" element={<InvitationAcceptPage />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="/trips" element={<TripsPage />} />
-              <Route path="/trips/:tripId" element={<TripDetailPage />} />
-              <Route path="/offline-vault" element={<OfflineVaultPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/preferences" element={<PreferencesPage />} />
-              <Route path="/travel-guide" element={<TravelGuidePage />} />
-            </Route>
-            <Route element={<AdminRoute />}>
-              <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="/admin/knowledge" element={<KnowledgeCenterPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-        {!isAuthPage && <Footer />}
-      </div>
+      <PreferencesProvider>
+        <div className="site-shell">
+          {!isAuthPage && <Navbar />}
+          <main className="site-main">
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/plan" element={<PlannerPage />} />
+              <Route path="/login" element={<AuthPage mode="login" />} />
+              <Route path="/register" element={<AuthPage mode="register" />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+              <Route path="/invitations/:token" element={<InvitationAcceptPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="/trips" element={<TripsPage />} />
+                <Route path="/trips/:tripId" element={<TripDetailPage />} />
+                <Route path="/offline-vault" element={<OfflineVaultPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/preferences" element={<PreferencesPage />} />
+                <Route path="/travel-guide" element={<TravelGuidePage />} />
+              </Route>
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminDashboardPage />} />
+                <Route path="/admin/knowledge" element={<KnowledgeCenterPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+          {!isAuthPage && <Footer />}
+        </div>
+      </PreferencesProvider>
     </AuthProvider>
   )
 }

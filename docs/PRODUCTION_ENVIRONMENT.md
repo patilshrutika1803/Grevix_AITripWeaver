@@ -192,5 +192,24 @@ public files and do not add a blanket cache rule for authenticated API data.
    Atlas data.
 
 The `scripts/create_admin.py` operator script grants admin access to an
-existing Supabase Auth UUID supplied as `SUPABASE_USER_ID`. Run it only against
-the intended backend/database and only when you deliberately need an admin.
+existing Supabase Auth UUID supplied as `SUPABASE_USER_ID`. Admin status is
+stored on the matching MongoDB `users` record as `is_admin`; Supabase user
+metadata and frontend environment variables do not grant admin access.
+
+To grant access, first create the user through the normal Supabase signup flow,
+then run the operator script from the repository root against the intended
+MongoDB database. The backend `MONGODB_URI` and `MONGODB_DATABASE` settings
+must be available to the script (for example, through the local `.env` file):
+
+```powershell
+$env:SUPABASE_USER_ID = "<existing Supabase Auth user UUID>"
+& .\.venv\Scripts\python.exe .\scripts\create_admin.py
+Remove-Item Env:SUPABASE_USER_ID
+```
+
+The script upserts that UUID into MongoDB with `is_admin=true`. The user can
+then sign in at `/login`, select **Admin**, and open `/admin/knowledge` to
+upload PDFs. The API independently validates the Supabase bearer token and
+MongoDB admin role for all knowledge-management operations. Never place the
+UUID, database credentials, or other backend settings in frontend `VITE_`
+variables.

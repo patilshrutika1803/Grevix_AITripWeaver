@@ -30,6 +30,10 @@ class DayNotFoundError(Exception):
     """Raised when a day number is not present in an itinerary."""
 
 
+class AttractionNotFoundError(Exception):
+    """Raised when an attraction is not present in a trip day."""
+
+
 class DayRegenerationError(Exception):
     """Raised when the single-day regeneration process fails."""
 
@@ -127,6 +131,78 @@ class TripService:
             "updated_at": updated_at,
         }
 
+    def update_attraction(
+        self,
+        trip_id: str,
+        day_number: int,
+        attraction_index: int,
+        updates: dict[str, Any],
+    ) -> dict[str, Any]:
+        trip = self.get_trip(trip_id)
+        if trip is None:
+            raise TripNotFoundError(f"Trip {trip_id} was not found.")
+
+        itinerary = list(trip.get("itinerary") or [])
+        day_index = next(
+            (index for index, day in enumerate(itinerary) if day.get("day_number") == day_number),
+            None,
+        )
+        if day_index is None:
+            raise DayNotFoundError(f"Day {day_number} not found for trip {trip_id}.")
+
+        attractions = list(itinerary[day_index].get("attractions") or [])
+        if attraction_index < 0 or attraction_index >= len(attractions):
+            raise AttractionNotFoundError(
+                f"Attraction {attraction_index} not found for day {day_number}."
+            )
+
+        attraction = attractions[attraction_index]
+        place = attraction.get("place")
+        if not isinstance(place, dict):
+            raise AttractionNotFoundError(
+                f"Attraction {attraction_index} not found for day {day_number}."
+            )
+
+        updated_attraction = {
+            **attraction,
+            "timing": updates["time"],
+            "place": {
+                **place,
+                "name": updates["title"],
+                "description": updates["description"],
+                "entry_fee": format(updates["cost"], "f"),
+            },
+        }
+        updated_at = self._next_timestamp()
+        path = f"itinerary.{day_index}.attractions.{attraction_index}"
+        result = self.database.trips.update_one(
+            {
+                "_id": trip_id,
+                f"itinerary.{day_index}.day_number": day_number,
+                path: attraction,
+            },
+            {
+                "$set": {
+                    f"{path}.timing": updated_attraction["timing"],
+                    f"{path}.place.name": updated_attraction["place"]["name"],
+                    f"{path}.place.description": updated_attraction["place"]["description"],
+                    f"{path}.place.entry_fee": updated_attraction["place"]["entry_fee"],
+                    "updated_at": updated_at,
+                }
+            },
+        )
+        if result.matched_count != 1:
+            raise AttractionNotFoundError(
+                f"Attraction {attraction_index} changed before it could be saved. Refresh and try again."
+            )
+        return {
+            "trip_id": trip_id,
+            "day_number": day_number,
+            "attraction_index": attraction_index,
+            "attraction": updated_attraction,
+            "updated_at": updated_at,
+        }
+
     def travelplan_to_trip(
         self,
         travel_plan: TravelPlan | dict[str, Any],
@@ -189,6 +265,8 @@ class TripService:
         content = (
             f"Destination: {preferences.destination}\n"
             f"Trip duration: {preferences.duration} days\n"
+            f"Travel dates: {preferences.travel_dates or 'Not specified'}\n"
+            f"Total trip budget: {preferences.total_budget} {preferences.budget_currency}\n"
             f"Travel style: {preferences.travel_style}\n"
             f"Group size: {preferences.group_size}\n"
             f"Interests: {', '.join(preferences.interests) if preferences.interests else 'General'}\n"

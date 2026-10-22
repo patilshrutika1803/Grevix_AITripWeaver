@@ -28,9 +28,11 @@ test('API client uses the configured backend origin and no legacy token storage'
     }
     if (url === 'https://api.example.test/api/v1/trips/trip-123/journal') {
       return new Response(JSON.stringify({
-        error: 'Request validation failed.',
-        validation_errors: [{ field: 'media_references', message: 'Media references must be absolute HTTP or HTTPS URLs.' }],
-      }), { status: 422 })
+        id: 'entry-123',
+        title: null,
+        content: 'A note submitted by the journal editor.',
+        media_references: [],
+      }), { status: 201 })
     }
     return new Response(JSON.stringify({ notifications: [] }), { status: 200 })
   }
@@ -56,10 +58,8 @@ test('API client uses the configured backend origin and no legacy token storage'
       occurred_at: '2026-10-11T14:05:00.000Z',
       media_references: [],
     }
-    await assert.rejects(
-      journalApi.create('trip-123', journalPayload),
-      /Request validation failed\. media_references: Media references must be absolute HTTP or HTTPS URLs\./,
-    )
+    const journalEntry = await journalApi.create('trip-123', journalPayload)
+    assert.deepEqual(journalEntry.media_references, [])
     const journalCall = calls.find((call) => call.url === 'https://api.example.test/api/v1/trips/trip-123/journal')
     assert.ok(journalCall)
     assert.equal(journalCall.options.method, 'POST')

@@ -99,9 +99,13 @@ def itinerary_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     content = (
         f"Destination: {preferences.destination}\n"
         f"Duration: {preferences.duration} days\n"
+        f"Travel dates: {preferences.travel_dates or 'Not specified'}\n"
+        f"Requested budget: {preferences.total_budget:g} {preferences.budget_currency}\n"
         f"Travel Style: {preferences.travel_style}\n"
-        f"Group Size: {preferences.group_size}\n"
+        f"Travelers: {preferences.group_size}\n"
         f"Interests: {', '.join(preferences.interests) if preferences.interests else 'General'}\n\n"
+        f"Things to avoid: {', '.join(preferences.things_to_avoid) if preferences.things_to_avoid else 'None specified'}\n"
+        f"Domestic trip: {'Yes' if preferences.is_domestic else 'No'}\n\n"
         f"{context_summary}\n"
     )
 
@@ -122,38 +126,129 @@ def itinerary_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     def build_chain(llm):
         return build_structured_output(llm, ItineraryOutput)
 
+    def invoke_itinerary(messages):
+        if revision_requested:
+            return invoke_with_fallback(
+                build_chain,
+                messages,
+                fallback_on_primary_failure=True,
+            )
+        return invoke_with_fallback(build_chain, messages)
+
+    def recover_days(initial_days, missing_days=None):
+        if missing_days is None:
+            task = (
+                "The draft below has an invalid day count or day numbering. "
+                f"Regenerate the complete itinerary with exactly {preferences.duration} "
+                f"DayPlan objects numbered consecutively from 1 through {preferences.duration}. "
+                "Do not duplicate days."
+            )
+            draft_label = "INVALID DRAFT"
+            expected_numbers = expected_days
+            expected_count = preferences.duration
+            expected_description = (
+                f"{expected_count} days numbered 1 through {preferences.duration}"
+            )
+        else:
+            task = (
+                "The draft below is missing itinerary days. Return exactly "
+                f"{len(missing_days)} DayPlan object(s), and only for day number(s) "
+                f"{missing_days}. Do not repeat or rewrite the existing days."
+            )
+            draft_label = "EXISTING ITINERARY"
+            expected_numbers = set(missing_days)
+            expected_count = len(missing_days)
+            expected_description = (
+                f"{expected_count} missing day(s) numbered {missing_days}"
+            )
+
+        recovery_content = (
+            f"{content}\n"
+            f"RECOVERY TASK: {task} Preserve the destination, trip dates, duration, "
+            "traveler count, requested budget, and preferences above. Use only attractions "
+            "and activities supported by the provided research context; if no supported "
+            "attraction fits, leave the attractions list empty rather than inventing one.\n"
+            f"{draft_label} (JSON):\n"
+            f"{json.dumps([day.model_dump(mode='json') for day in initial_days], ensure_ascii=False)}\n"
+        )
+        try:
+            recovery_response = invoke_itinerary(
+                [
+                    SystemMessage(content=SYSTEM_PROMPT),
+                    HumanMessage(content=recovery_content),
+                ]
+            )
+        except Exception as exc:
+            raise ValueError(
+                "Itinerary recovery failed: the model could not complete the bounded repair."
+            ) from exc
+
+        recovered_days = recovery_response.itinerary
+        recovered_numbers = [day.day_number for day in recovered_days]
+        if (
+            len(recovered_days) != expected_count
+            or len(set(recovered_numbers)) != len(recovered_numbers)
+            or set(recovered_numbers) != expected_numbers
+        ):
+            raise ValueError(
+                "Itinerary recovery failed: "
+                f"returned {len(recovered_days)} days numbered {recovered_numbers}; "
+                f"expected exactly {expected_description}."
+            )
+        return sorted(recovered_days, key=lambda day: day.day_number)
+
     try:
         messages = [
             SystemMessage(content=SYSTEM_PROMPT),
             HumanMessage(content=content),
         ]
-        if revision_requested:
-            final_response = invoke_with_fallback(
-                build_chain,
-                messages,
-                fallback_on_primary_failure=True,
+        initial_response = invoke_itinerary(messages)
+        expected_days = set(range(1, preferences.duration + 1))
+        initial_days = initial_response.itinerary
+        initial_numbers = [day.day_number for day in initial_days]
+
+        if (
+            len(initial_days) < preferences.duration
+            and len(set(initial_numbers)) == len(initial_numbers)
+            and set(initial_numbers).issubset(expected_days)
+        ):
+            missing_days = sorted(expected_days - set(initial_numbers))
+            itinerary = sorted(
+                initial_days + recover_days(initial_days, missing_days),
+                key=lambda day: day.day_number,
             )
+        elif (
+            len(initial_days) == preferences.duration
+            and len(set(initial_numbers)) == len(initial_numbers)
+            and set(initial_numbers) == expected_days
+        ):
+            itinerary = sorted(initial_days, key=lambda day: day.day_number)
         else:
-            final_response = invoke_with_fallback(build_chain, messages)
-        if len(final_response.itinerary) != preferences.duration:
+            itinerary = recover_days(initial_days)
+
+        if (
+            len(itinerary) != preferences.duration
+            or [day.day_number for day in itinerary] != list(range(1, preferences.duration + 1))
+        ):
             raise ValueError(
-                f"ItineraryAgent returned {len(final_response.itinerary)} days; "
-                f"expected exactly {preferences.duration}."
+                "Itinerary recovery failed: final itinerary must contain exactly "
+                f"{preferences.duration} days numbered consecutively from 1."
             )
-        logger.info(f"Itinerary created with {len(final_response.itinerary)} days.")
+
+        logger.info(f"Itinerary created with {len(itinerary)} days.")
         researched_activities = research_data.get("activities", [])
-        for day in final_response.itinerary:
+        for day in itinerary:
             if not day.activities:
                 day.activities = list(researched_activities[:3]) or [
                     attraction.place.name for attraction in day.attractions[:3]
                 ]
         reconciled_budget = reconcile_budget(
             budget,
-            final_response.itinerary,
+            itinerary,
             preferences.total_budget,
         )
         return {
-            "itinerary": [day.model_dump() for day in final_response.itinerary],
+            "itinerary": [day.model_dump() for day in itinerary],
             "budget_breakdown": reconciled_budget,
             "completed_agents": ["ItineraryAgent"],
         }

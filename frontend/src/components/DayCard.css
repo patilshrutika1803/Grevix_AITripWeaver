@@ -134,6 +134,13 @@
 /* Attractions */
 .attractions-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 
+.attraction-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+}
+
 .attraction-item {
   display: flex;
   align-items: center;
@@ -177,6 +184,66 @@
   white-space: nowrap;
 }
 
+.attraction-edit-button {
+  align-self: center;
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+.attraction-editor {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+}
+
+.attraction-editor label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.attraction-editor input,
+.attraction-editor textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.attraction-editor textarea {
+  resize: vertical;
+}
+
+.attraction-editor-error,
+.attraction-editor-actions {
+  grid-column: 1 / -1;
+}
+
+.attraction-editor-error {
+  margin: 0;
+}
+
+.attraction-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.attraction-editor-actions .button {
+  min-height: 36px;
+  padding: 0 14px;
+}
+
 /* Meals */
 .meals-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 
@@ -194,3 +261,9 @@
 .meal-type { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
 .meal-name { font-size: 13px; font-weight: 500; color: var(--text); }
 .meal-cost { font-size: 13px; font-weight: 600; color: var(--primary); white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .attraction-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

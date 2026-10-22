@@ -56,13 +56,19 @@ def test_journal_editor_payload_matches_create_request():
     assert request.content == payload["content"]
     assert request.occurred_at == datetime.fromisoformat("2026-10-11T14:05:00+00:00")
     assert request.media_references == []
+    request_with_empty_references = JournalEntryCreateRequest.model_validate({
+        **payload,
+        "media_references": ["", "  "],
+    })
+    assert request_with_empty_references.media_references == []
 
 
-def test_journal_validation_errors_include_safe_field_details():
+@pytest.mark.parametrize("reference", ["javascript:alert(1)", "https://[::1"])
+def test_journal_validation_errors_include_safe_field_details(reference):
     with pytest.raises(ValidationError) as validation_error:
         JournalEntryCreateRequest.model_validate({
             "content": "A memory",
-            "media_references": ["javascript:alert(1)"],
+            "media_references": [reference],
         })
 
     request = Request({
@@ -82,5 +88,5 @@ def test_journal_validation_errors_include_safe_field_details():
     assert body["error"] == "Request validation failed."
     assert body["validation_errors"][0]["field"] == "media_references"
     assert "HTTP or HTTPS URLs" in body["validation_errors"][0]["message"]
-    assert "javascript:alert(1)" not in response.body.decode()
+    assert reference not in response.body.decode()
     assert "input" not in body

@@ -13,7 +13,9 @@ estimated_day_cost; and a hotel/transport object with those same non-factual
 defaults.
 
 Rules:
-- Fill every day with a hotel, 3 meals, and 2-3 attractions.
+- Fill every day with a hotel and 3 meals. Use 2-3 attractions only when they are
+  supported by the provided research context; never invent attraction names. If
+  fewer supported attractions fit, include only those supported options.
 - Fill activities with 1-3 concrete activities from the suggested activities or attractions context; do not leave it empty when attractions are available.
 - Prefer indoor activities if weather is rainy.
 - Stay within the budget limit.

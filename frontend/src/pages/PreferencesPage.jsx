@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { preferencesApi } from '../api/client'
+import { usePreferences } from '../preferences/usePreferences'
+import { savePreferences } from '../preferences/service'
+import { preferenceFormValues } from '../utils/preferences'
 
 const DEFAULTS = { travel_style: '', interests: [], budget_preference: '', hotel_preference: '', food_preference: '', preferred_destinations: [] }
 const INTERESTS = ['Beach', 'Food', 'Culture', 'Nature', 'Adventure', 'Wellness', 'Nightlife']
 
 export default function PreferencesPage() {
+  const { setPreferences } = usePreferences()
   const [form, setForm] = useState(DEFAULTS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -14,16 +17,23 @@ export default function PreferencesPage() {
 
   useEffect(() => {
     preferencesApi.get()
-      .then((preferences) => setForm({ ...DEFAULTS, ...preferences, interests: preferences.interests || [], preferred_destinations: preferences.preferred_destinations || [] }))
+      .then((preferences) => {
+        setPreferences(preferences)
+        setForm({ ...DEFAULTS, ...preferenceFormValues(preferences) })
+      })
       .catch((err) => setError(err.message || 'Unable to load preferences.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [setPreferences])
 
   const setValue = (name, value) => setForm((current) => ({ ...current, [name]: value }))
   const toggleInterest = (interest) => setValue('interests', form.interests.includes(interest) ? form.interests.filter((item) => item !== interest) : [...form.interests, interest])
   const save = async (event) => {
     event.preventDefault(); setSaving(true); setMessage(''); setError('')
-    try { await preferencesApi.update(form); setMessage('Preferences saved.') }
+    try {
+      const savedPreferences = await savePreferences(form, setPreferences)
+      setForm({ ...DEFAULTS, ...preferenceFormValues(savedPreferences) })
+      setMessage('Preferences saved.')
+    }
     catch (err) { setError(err.message || 'Unable to save preferences.') }
     finally { setSaving(false) }
   }

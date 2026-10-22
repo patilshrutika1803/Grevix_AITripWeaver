@@ -1,4 +1,4 @@
-import { getMessageSenderLabel } from './groupDisplay'
+import { formatMessageTimestamp, getMessageSenderLabel } from './groupDisplay'
 
 export function GroupChat({ messages, draft, setDraft, sendMessage, editMessage, deleteMessage, loadOlder, hasMore, loading, error, canChat = true, userId, canModerate = false }) {
 	return <section className="panel group-chat">
@@ -10,7 +10,7 @@ export function GroupChat({ messages, draft, setDraft, sendMessage, editMessage,
 		{canChat && !loading && messages.length === 0 && <p className="empty-state chat-state">No messages yet. Start the conversation with your group.</p>}
 		{canChat && messages.length > 0 && <div className="chat-message-list" aria-label="Group messages">
 			{messages.map(item => <article className={`chat-message${item.sender_user_id === userId ? ' chat-message-own' : ''}`} key={item.id}>
-				<div className="chat-message-heading"><strong>{getMessageSenderLabel(item)}{item.sender_user_id === userId && <span>You</span>}</strong><small>{new Date(item.created_at).toLocaleString()}{item.edited_at && ' · edited'}</small></div>
+				<div className="chat-message-heading"><strong>{getMessageSenderLabel(item)}{item.sender_user_id === userId && <span>You</span>}</strong><small>{formatMessageTimestamp(item.created_at)}{item.edited_at && ' · edited'}</small></div>
 				<p>{item.deleted_at ? 'Message deleted' : item.body}</p>
 				{!item.deleted_at && (item.sender_user_id === userId || canModerate) && <div className="chat-message-actions"><button className="button button-quiet" onClick={() => editMessage(item)}>Edit</button><button className="button button-quiet" onClick={() => deleteMessage(item.id)}>Delete</button></div>}
 			</article>)}

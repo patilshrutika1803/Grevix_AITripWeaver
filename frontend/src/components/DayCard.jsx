@@ -1,6 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import PlaceDetailModal from './PlaceDetailModal'
 import { formatCurrency } from '../utils/currency'
+import {
+  attractionEditorReducer,
+  initialAttractionEditorState,
+  validateAttractionDraft,
+} from '../utils/itineraryActivity'
 import './DayCard.css'
 
 const DAY_THEMES = [
@@ -10,9 +15,13 @@ const DAY_THEMES = [
   'linear-gradient(135deg, #f5a62320, #ff6b6b10)',
 ]
 
-export default function DayCard({ day, index, currency, onRegenerate }) {
+export default function DayCard({ day, index, currency, onRegenerate, regeneratingDay = null, onUpdateAttraction }) {
   const [open, setOpen] = useState(true)
   const [selectedPlace, setSelectedPlace] = useState(null)
+  const [attractionEditor, dispatchAttractionEditor] = useReducer(
+    attractionEditorReducer,
+    initialAttractionEditorState,
+  )
 
   const {
     day_number, theme, hotel, meals = [],
@@ -44,6 +53,55 @@ export default function DayCard({ day, index, currency, onRegenerate }) {
       return parseFloat(match[0].replace(/,/g, ''));
     }
     return 0;
+  }
+
+  const displayEntryFee = (value) => {
+    if (value === undefined || value === null || value === '') return 'Unknown'
+    return /\d/.test(String(value)) ? formatCurrency(extractNumber(value), currency) : value
+  }
+
+  const beginEditingAttraction = (attraction, attractionIndex) => {
+    dispatchAttractionEditor({
+      type: 'edit',
+      index: attractionIndex,
+      draft: {
+        title: attraction.place?.name || '',
+        description: attraction.place?.description || '',
+        time: attraction.timing || '',
+        cost: String(extractNumber(attraction.place?.entry_fee)),
+      },
+    })
+  }
+
+  const cancelEditingAttraction = () => {
+    dispatchAttractionEditor({ type: 'cancel' })
+  }
+
+  const saveAttraction = async (event) => {
+    event.preventDefault()
+    const validationError = validateAttractionDraft(attractionEditor.draft)
+    if (validationError) {
+      dispatchAttractionEditor({ type: 'save-failed', error: validationError })
+      return
+    }
+
+    dispatchAttractionEditor({ type: 'saving' })
+    try {
+      await onUpdateAttraction(day_number, attractionEditor.editingIndex, {
+        title: attractionEditor.draft.title.trim(),
+        description: attractionEditor.draft.description.trim(),
+        time: attractionEditor.draft.time.trim(),
+        cost: Number(attractionEditor.draft.cost),
+      })
+      dispatchAttractionEditor({ type: 'saved' })
+    } catch (error) {
+      dispatchAttractionEditor({
+        type: 'save-failed',
+        error: error?.status === 404
+          ? 'This activity is unavailable or you do not have permission to edit the trip.'
+          : error?.message || 'Unable to save this activity. Please try again.',
+      })
+    }
   }
 
   const calculatedTotal =
@@ -89,7 +147,7 @@ export default function DayCard({ day, index, currency, onRegenerate }) {
             </span>
           </div>
         </button>
-        {onRegenerate && <button type="button" className="text-button" onClick={() => onRegenerate(day_number)}>Regenerate</button>}
+        {onRegenerate && <button type="button" className="text-button" onClick={() => onRegenerate(day_number)} disabled={regeneratingDay !== null} aria-busy={regeneratingDay === day_number}>{regeneratingDay === day_number ? 'Regenerating...' : 'Regenerate'}</button>}
       </div>
 
       {/* Collapsible body */}
@@ -112,20 +170,83 @@ export default function DayCard({ day, index, currency, onRegenerate }) {
               <p className="section-title">Attractions</p>
               <div className="attractions-list">
                 {attractions.map((attr, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className="attraction-item"
-                    onClick={() => attr.place?.name && setSelectedPlace({ place: attr.place, timing: attr.timing })}
-                    disabled={!attr.place?.name}
-                  >
-                    <span className="attr-icon">{categoryIcon(attr.place?.category)}</span>
-                    <div className="attr-info">
-                      <p className="attr-name">{attr.place?.name}</p>
-                      <p className="attr-meta">{attr.timing} · {attr.place?.entry_fee}</p>
-                    </div>
-                    <span className="attr-dur">{attr.place?.recommended_duration_hours}h</span>
-                  </button>
+                  <div className="attraction-entry" key={i}>
+                    <button
+                      type="button"
+                      className="attraction-item"
+                      onClick={() => attr.place?.name && setSelectedPlace({ place: attr.place, timing: attr.timing })}
+                      disabled={!attr.place?.name}
+                    >
+                      <span className="attr-icon">{categoryIcon(attr.place?.category)}</span>
+                      <div className="attr-info">
+                        <p className="attr-name">{attr.place?.name}</p>
+                        <p className="attr-meta">{attr.timing} · {displayEntryFee(attr.place?.entry_fee)}</p>
+                      </div>
+                      <span className="attr-dur">{attr.place?.recommended_duration_hours}h</span>
+                    </button>
+                    {onUpdateAttraction && attr.place?.name && attractionEditor.editingIndex !== i && (
+                      <button
+                        type="button"
+                        className="text-button attraction-edit-button"
+                        onClick={() => beginEditingAttraction(attr, i)}
+                        aria-label={`Edit ${attr.place.name}`}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {attractionEditor.editingIndex === i && attractionEditor.draft && (
+                      <form className="attraction-editor" onSubmit={saveAttraction} noValidate>
+                        <label>
+                          Title
+                          <input
+                            required
+                            maxLength={300}
+                            value={attractionEditor.draft.title}
+                            onChange={event => dispatchAttractionEditor({ type: 'change', field: 'title', value: event.target.value })}
+                          />
+                        </label>
+                        <label>
+                          Description
+                          <textarea
+                            maxLength={2000}
+                            rows={2}
+                            value={attractionEditor.draft.description}
+                            onChange={event => dispatchAttractionEditor({ type: 'change', field: 'description', value: event.target.value })}
+                          />
+                        </label>
+                        <label>
+                          Time
+                          <input
+                            required
+                            maxLength={300}
+                            value={attractionEditor.draft.time}
+                            onChange={event => dispatchAttractionEditor({ type: 'change', field: 'time', value: event.target.value })}
+                          />
+                        </label>
+                        <label>
+                          Cost ({currency})
+                          <input
+                            required
+                            type="number"
+                            min="0"
+                            max="9999999999.99"
+                            step="0.01"
+                            value={attractionEditor.draft.cost}
+                            onChange={event => dispatchAttractionEditor({ type: 'change', field: 'cost', value: event.target.value })}
+                          />
+                        </label>
+                        {attractionEditor.error && <p className="form-error attraction-editor-error" role="alert">{attractionEditor.error}</p>}
+                        <div className="attraction-editor-actions">
+                          <button type="submit" className="button button-primary" disabled={attractionEditor.saving}>
+                            {attractionEditor.saving ? 'Saving...' : 'Save'}
+                          </button>
+                          <button type="button" className="button button-quiet" onClick={cancelEditingAttraction} disabled={attractionEditor.saving}>
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
