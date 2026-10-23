@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -24,6 +25,15 @@ const savedPreferences = {
 }
 
 test('profile immediately renders saved backend preferences in its normal view', async () => {
+  const preferencesPageSource = await readFile(
+    new URL('../src/pages/PreferencesPage.jsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(
+    preferencesPageSource,
+    /import\s+\{\s*preferencesApi\s*\}\s+from\s+['"]\.\.\/api\/client['"]/,
+  )
+
   const server = await createServer({
     configFile: fileURLToPath(new URL('../vite.config.js', import.meta.url)),
     root: fileURLToPath(new URL('..', import.meta.url)),
@@ -35,11 +45,13 @@ test('profile immediately renders saved backend preferences in its normal view',
   try {
     const [
       { default: ProfilePage, ProfilePreferences },
+      { default: PreferencesPage },
       { AuthContext },
       { PreferencesContext },
       { MemoryRouter },
     ] = await Promise.all([
       server.ssrLoadModule('/src/pages/ProfilePage.jsx'),
+      server.ssrLoadModule('/src/pages/PreferencesPage.jsx'),
       server.ssrLoadModule('/src/auth/context.js'),
       server.ssrLoadModule('/src/preferences/context.js'),
       import('react-router-dom'),
@@ -62,6 +74,17 @@ test('profile immediately renders saved backend preferences in its normal view',
     assert.match(profile, /<strong>Beach, Culture<\/strong>/)
     assert.match(profile, /href="\/preferences"/)
     assert.doesNotMatch(profile, /Flexible|Food, culture, nature|Add destinations/)
+
+    const preferencesPage = renderToStaticMarkup(createElement(
+      MemoryRouter,
+      null,
+      createElement(PreferencesContext.Provider, {
+        value: { preferences: null, setPreferences() {} },
+      }, createElement(PreferencesPage)),
+    ))
+    assert.match(preferencesPage, /class="preferences-page/)
+    assert.match(preferencesPage, /<h1>Preferences<\/h1>/)
+    assert.match(preferencesPage, /Loading preferences/)
 
     const missing = renderToStaticMarkup(createElement(
       MemoryRouter,

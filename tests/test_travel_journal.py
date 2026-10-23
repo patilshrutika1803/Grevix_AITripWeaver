@@ -193,6 +193,8 @@ def test_personal_journal_crud_timeline_media_and_statistics(journal_clients, jo
 
     invalid_media = owner.post(endpoint, json={"content": "Bad reference", "media_references": ["javascript:alert(1)"]})
     assert invalid_media.status_code == 422
+    assert invalid_media.json()["validation_errors"][0]["field"] == "media_references"
+    assert "HTTP or HTTPS URLs" in invalid_media.json()["validation_errors"][0]["message"]
     invalid_update = owner.patch(f"/api/v1/journal-entries/{first.json()['id']}", json={"content": None})
     assert invalid_update.status_code == 422
 
@@ -226,6 +228,31 @@ def test_personal_journal_crud_timeline_media_and_statistics(journal_clients, jo
     assert update.json()["media_references"] == []
     assert owner.delete(f"/api/v1/journal-entries/{first.json()['id']}").status_code == 204
     assert len(owner.get(endpoint).json()) == 1
+
+
+def test_journal_media_reference_limit_matches_editor_contract(journal_clients):
+    (owner, _), _, _ = journal_clients
+    trip = _trip(owner)
+    endpoint = f"/api/v1/trips/{trip['id']}/journal"
+    payload = {
+        "title": "Photo collection",
+        "content": "A collection of trip photos.",
+        "occurred_at": "2026-04-12T19:30:00.000Z",
+        "media_references": [
+            f"https://example.test/photo-{index}.jpg" for index in range(10)
+        ],
+    }
+
+    accepted = owner.post(endpoint, json=payload)
+    assert accepted.status_code == 201, accepted.text
+    assert accepted.json()["media_references"] == payload["media_references"]
+
+    rejected = owner.post(endpoint, json={
+        **payload,
+        "media_references": payload["media_references"] + ["https://example.test/photo-10.jpg"],
+    })
+    assert rejected.status_code == 422
+    assert rejected.json()["validation_errors"][0]["field"] == "media_references"
 
 
 def test_group_journal_access_author_mutations_and_removed_member(journal_clients, journal_app):

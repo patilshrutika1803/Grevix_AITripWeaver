@@ -27,11 +27,13 @@ test('API client uses the configured backend origin and no legacy token storage'
       }), { status: 200 })
     }
     if (url === 'https://api.example.test/api/v1/trips/trip-123/journal') {
+      const payload = JSON.parse(options.body)
       return new Response(JSON.stringify({
         id: 'entry-123',
-        title: null,
-        content: 'A note submitted by the journal editor.',
-        media_references: [],
+        title: payload.title,
+        content: payload.content,
+        occurred_at: payload.occurred_at,
+        media_references: payload.media_references,
       }), { status: 201 })
     }
     return new Response(JSON.stringify({ notifications: [] }), { status: 200 })
@@ -53,13 +55,13 @@ test('API client uses the configured backend origin and no legacy token storage'
     assert.equal(apiUrl('/plan/stream'), 'https://api.example.test/plan/stream')
     assert.deepEqual(await notificationsApi.list(), { notifications: [] })
     const journalPayload = {
-      title: null,
+      title: 'Evening walk',
       content: 'A note submitted by the journal editor.',
       occurred_at: '2026-10-11T14:05:00.000Z',
-      media_references: [],
+      media_references: ['https://example.test/trip-photo.jpg'],
     }
     const journalEntry = await journalApi.create('trip-123', journalPayload)
-    assert.deepEqual(journalEntry.media_references, [])
+    assert.deepEqual(journalEntry.media_references, journalPayload.media_references)
     const journalCall = calls.find((call) => call.url === 'https://api.example.test/api/v1/trips/trip-123/journal')
     assert.ok(journalCall)
     assert.equal(journalCall.options.method, 'POST')

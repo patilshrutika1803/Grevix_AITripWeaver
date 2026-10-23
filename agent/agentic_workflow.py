@@ -21,7 +21,7 @@ from agent.preference_extractor import preference_extractor_node
 from agent.research_agent import research_agent_node
 from agent.weather_agent import weather_agent_node
 from agent.budget_agent import budget_agent_node
-from agent.itinerary_agent import itinerary_agent_node
+from agent.itinerary_agent import incomplete_day_numbers, itinerary_agent_node
 from agent.critic_agent import critic_agent_node
 from memory.short_term import get_checkpointer
 
@@ -142,12 +142,33 @@ def validate_final_state(state: Dict[str, Any]) -> List[str]:
         if not isinstance(state.get("chat_response"), str) or not state.get("chat_response", "").strip():
             errors.append("Chat response is unavailable.")
         return errors
-    if not isinstance(state.get("preferences"), UserPreferences):
+    preferences = state.get("preferences")
+    if not isinstance(preferences, UserPreferences):
         errors.append("Preferences are unavailable.")
     if not isinstance(state.get("budget_breakdown"), BudgetBreakdown):
         errors.append("Budget is unavailable.")
-    if not isinstance(state.get("itinerary"), list) or not state.get("itinerary"):
+    itinerary = state.get("itinerary")
+    if not isinstance(itinerary, list) or not itinerary:
         errors.append("Itinerary is unavailable or empty.")
+    elif isinstance(preferences, UserPreferences):
+        day_numbers = [
+            day.day_number if isinstance(day, DayPlan) else day.get("day_number")
+            if isinstance(day, dict)
+            else None
+            for day in itinerary
+        ]
+        expected_day_numbers = list(range(1, preferences.duration + 1))
+        if day_numbers != expected_day_numbers:
+            errors.append(
+                f"Itinerary must contain exactly {preferences.duration} days numbered "
+                "consecutively from 1."
+            )
+        incomplete_days = incomplete_day_numbers(itinerary)
+        if incomplete_days:
+            errors.append(
+                "Itinerary days have no usable meal, attraction, or activity content: "
+                f"{incomplete_days}."
+            )
     if not isinstance(state.get("critic_review"), CriticReview):
         errors.append("Critic review is unavailable.")
     failed = set(state.get("failed_agents", []))

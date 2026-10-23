@@ -49,7 +49,7 @@ def _day(day_number, theme):
             )
         ],
         attractions=[],
-        activities=["City walk"],
+        activities=[f"City walk day {day_number}"],
         transport=Transport(mode="Taxi", estimated_cost=500),
         estimated_day_cost=6500,
     )
@@ -248,6 +248,51 @@ def test_four_day_itinerary_succeeds_without_recovery(monkeypatch):
     assert len(calls) == 1
 
 
+def test_complete_numbered_itinerary_rejects_duplicate_activity_names(monkeypatch):
+    calls = []
+    days = [
+        _day(1, "Day 1").model_copy(update={"activities": ["Lake   Walk"]}),
+        _day(2, "Day 2").model_copy(update={"activities": ["  lake walk  "]}),
+        _day(3, "Day 3").model_copy(update={"activities": ["Market visit"]}),
+        _day(4, "Day 4").model_copy(update={"activities": ["Museum visit"]}),
+    ]
+    monkeypatch.setattr(
+        itinerary_module,
+        "invoke_with_fallback",
+        lambda *_args, **_kwargs: (
+            calls.append(True) or itinerary_module.ItineraryOutput(itinerary=days)
+        ),
+    )
+
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
+
+    assert calls == [True]
+    assert result["itinerary"] is None
+    assert result["failed_agents"] == ["ItineraryAgent"]
+    assert "final itinerary contains duplicate activities for day(s) [2]" in (
+        result["failure_reasons"]["ItineraryAgent"]
+    )
+
+
+def test_distinct_activity_names_are_not_reported_as_duplicates(monkeypatch):
+    days = [
+        _day(1, "Day 1").model_copy(update={"activities": ["Old Town walk"]}),
+        _day(2, "Day 2").model_copy(update={"activities": ["Old Town market"]}),
+        _day(3, "Day 3").model_copy(update={"activities": ["City museum"]}),
+        _day(4, "Day 4").model_copy(update={"activities": ["River cruise"]}),
+    ]
+    monkeypatch.setattr(
+        itinerary_module,
+        "invoke_with_fallback",
+        lambda *_args, **_kwargs: itinerary_module.ItineraryOutput(itinerary=days),
+    )
+
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
+
+    assert result["completed_agents"] == ["ItineraryAgent"]
+    assert len(result["itinerary"]) == 4
+
+
 def test_four_day_itinerary_recovers_only_missing_day_and_preserves_request(monkeypatch):
     preferences = _preferences(4).model_copy(
         update={
@@ -290,6 +335,140 @@ def test_four_day_itinerary_recovers_only_missing_day_and_preserves_request(monk
         assert "Things to avoid: crowds" in prompt
     assert "only for day number(s) [4]" in prompts[1]
     assert "Do not repeat or rewrite the existing days" in prompts[1]
+
+
+def test_incomplete_fourth_day_is_replaced_without_rewriting_other_days(monkeypatch):
+    incomplete_day = _day(4, "Departure").model_copy(
+        update={"meals": [], "attractions": [], "activities": []}
+    )
+    responses = iter([
+        itinerary_module.ItineraryOutput(
+            itinerary=[
+                *[_day(day_number, f"Day {day_number}") for day_number in range(1, 4)],
+                incomplete_day,
+            ]
+        ),
+        itinerary_module.ItineraryOutput(itinerary=[_day(4, "Complete departure")]),
+    ])
+    prompts = []
+
+    def invoke(_builder, messages, **_kwargs):
+        prompts.append(messages[1].content)
+        return next(responses)
+
+    monkeypatch.setattr(itinerary_module, "invoke_with_fallback", invoke)
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
+
+    assert result["completed_agents"] == ["ItineraryAgent"]
+    assert [day["day_number"] for day in result["itinerary"]] == [1, 2, 3, 4]
+    assert [day["theme"] for day in result["itinerary"]] == [
+        "Day 1", "Day 2", "Day 3", "Complete departure",
+    ]
+    assert len(prompts) == 2
+    assert "For each listed day already present, replace it" in prompts[1]
+    assert "only for day number(s) [4]" in prompts[1]
+    assert "do not repeat activities or invent attractions" in prompts[1]
+
+
+def test_incomplete_day_recovery_fails_without_usable_content(monkeypatch):
+    incomplete_day = _day(4, "Departure").model_copy(
+        update={"meals": [], "attractions": [], "activities": []}
+    )
+    responses = iter([
+        itinerary_module.ItineraryOutput(
+            itinerary=[
+                *[_day(day_number, f"Day {day_number}") for day_number in range(1, 4)],
+                incomplete_day,
+            ]
+        ),
+        itinerary_module.ItineraryOutput(
+            itinerary=[
+                _day(4, "Still empty").model_copy(
+                    update={"meals": [], "attractions": [], "activities": []}
+                )
+            ]
+        ),
+    ])
+    monkeypatch.setattr(
+        itinerary_module,
+        "invoke_with_fallback",
+        lambda *_args, **_kwargs: next(responses),
+    )
+
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
+
+    assert result["itinerary"] is None
+    assert result["failed_agents"] == ["ItineraryAgent"]
+    assert "days without usable content [4]" in result["failure_reasons"]["ItineraryAgent"]
+
+
+def test_incomplete_day_recovery_rejects_duplicate_activities(monkeypatch):
+    incomplete_day = _day(4, "Departure").model_copy(
+        update={"meals": [], "attractions": [], "activities": []}
+    )
+    responses = iter([
+        itinerary_module.ItineraryOutput(
+            itinerary=[
+                *[_day(day_number, f"Day {day_number}") for day_number in range(1, 4)],
+                incomplete_day,
+            ]
+        ),
+        itinerary_module.ItineraryOutput(
+            itinerary=[_day(4, "Repaired departure").model_copy(
+                update={"activities": [" City walk   DAY 1 "]}
+            )]
+        ),
+    ])
+    monkeypatch.setattr(
+        itinerary_module,
+        "invoke_with_fallback",
+        lambda *_args, **_kwargs: next(responses),
+    )
+
+    result = itinerary_module.itinerary_agent_node(_agent_state(duration=4))
+
+    assert result["itinerary"] is None
+    assert result["failed_agents"] == ["ItineraryAgent"]
+    assert "returned duplicate activities for day 4" in result["failure_reasons"]["ItineraryAgent"]
+
+
+def test_incomplete_day_in_critic_revision_uses_fallback_and_repair(monkeypatch):
+    incomplete_day = _day(4, "Revised departure").model_copy(
+        update={"meals": [], "attractions": [], "activities": []}
+    )
+    responses = iter([
+        itinerary_module.ItineraryOutput(
+            itinerary=[
+                *[_day(day_number, f"Revised {day_number}") for day_number in range(1, 4)],
+                incomplete_day,
+            ]
+        ),
+        itinerary_module.ItineraryOutput(itinerary=[_day(4, "Repaired departure")]),
+    ])
+    invocation_options = []
+
+    def invoke(_builder, _messages, **kwargs):
+        invocation_options.append(kwargs)
+        return next(responses)
+
+    monkeypatch.setattr(itinerary_module, "invoke_with_fallback", invoke)
+    result = itinerary_module.itinerary_agent_node(_agent_state(
+        critic_review=CriticReview(
+            overall_score=5,
+            requires_revision=True,
+            revision_instructions=["Improve the final day."],
+        ),
+        itinerary=[_day(day_number, f"Original {day_number}") for day_number in range(1, 5)],
+        duration=4,
+    ))
+
+    assert result["completed_agents"] == ["ItineraryAgent"]
+    assert invocation_options == [
+        {"fallback_on_primary_failure": True},
+        {"fallback_on_primary_failure": True},
+    ]
+    assert [day["day_number"] for day in result["itinerary"]] == [1, 2, 3, 4]
+    assert result["itinerary"][3]["theme"] == "Repaired departure"
 
 
 def test_four_day_recovery_rejects_duplicate_or_misnumbered_day(monkeypatch):
@@ -380,6 +559,37 @@ def test_revision_failure_is_returned_as_agent_failure(monkeypatch):
     assert result["itinerary"] is None
     assert result["failed_agents"] == ["ItineraryAgent"]
     assert result["failure_reasons"]["ItineraryAgent"] == "structured revision output unavailable"
+
+
+def test_final_state_validation_rejects_incomplete_or_misnumbered_days():
+    incomplete_day = _day(4, "Day 4").model_dump()
+    incomplete_day.update({"meals": [], "attractions": [], "activities": []})
+    state = {
+        "preferences": _preferences(4),
+        "budget_breakdown": BudgetBreakdown(
+            total_estimated=40000,
+            currency="INR",
+            is_within_budget=True,
+        ),
+        "itinerary": [
+            *[_day(day_number, f"Day {day_number}").model_dump() for day_number in range(1, 4)],
+            incomplete_day,
+        ],
+        "critic_review": CriticReview(overall_score=8, requires_revision=False),
+    }
+
+    errors = workflow_module.validate_final_state(state)
+
+    assert any("no usable meal, attraction, or activity content: [4]" in error for error in errors)
+    assert workflow_module.validate_final_state({
+        **state,
+        "itinerary": [
+            _day(day_number, f"Day {day_number}").model_dump()
+            for day_number in [1, 2, 2, 4]
+        ],
+    }) == [
+        "Itinerary must contain exactly 4 days numbered consecutively from 1."
+    ]
 
 
 def test_json_validation_error_on_revision_uses_existing_provider_fallback(monkeypatch):

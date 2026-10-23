@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
 import { journalApi } from '../api/client'
+import {
+  MAX_MEDIA_REFERENCES,
+  parseMediaReferences,
+  validateMediaReferences,
+} from './tripJournalValidation'
 import './TripJournal.css'
 
 const emptyDraft = () => ({ title: '', content: '', occurredAt: '', mediaReferences: '' })
@@ -28,17 +33,19 @@ function toPayload(draft) {
     title: draft.title.trim() || null,
     content: draft.content.trim(),
     occurred_at: draft.occurredAt ? new Date(draft.occurredAt).toISOString() : undefined,
-    media_references: draft.mediaReferences.split('\n').map(value => value.trim()).filter(Boolean),
+    media_references: parseMediaReferences(draft.mediaReferences),
   }
 }
 
-function EntryEditor({ draft, setDraft, onSubmit, onCancel, saving, submitLabel }) {
+function EntryEditor({ draft, setDraft, onSubmit, onCancel, saving, submitLabel, mediaValidationError }) {
   return <form className="journal-editor" onSubmit={onSubmit}>
     <label>Title <input maxLength="255" value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} placeholder="A moment worth remembering" /></label>
     <label>Entry <textarea required maxLength="10000" value={draft.content} onChange={event => setDraft(current => ({ ...current, content: event.target.value }))} placeholder="Write about this part of the trip..." /></label>
     <label>Date and time <input type="datetime-local" value={draft.occurredAt} onChange={event => setDraft(current => ({ ...current, occurredAt: event.target.value }))} /></label>
-    <label>Media links <textarea value={draft.mediaReferences} onChange={event => setDraft(current => ({ ...current, mediaReferences: event.target.value }))} placeholder="One HTTP(S) link per line" /></label>
-    <div className="journal-editor-actions"><button className="button button-primary" disabled={saving}>{saving ? 'Saving...' : submitLabel}</button>{onCancel && <button className="button button-quiet" type="button" onClick={onCancel}>Cancel</button>}</div>
+    <label>Media links <textarea value={draft.mediaReferences} onChange={event => setDraft(current => ({ ...current, mediaReferences: event.target.value }))} placeholder="One HTTP(S) link per line" />
+      {mediaValidationError ? <small className="form-error" role="alert">{mediaValidationError}</small> : <small>Up to {MAX_MEDIA_REFERENCES} links.</small>}
+    </label>
+    <div className="journal-editor-actions"><button className="button button-primary" disabled={saving || Boolean(mediaValidationError)}>{saving ? 'Saving...' : submitLabel}</button>{onCancel && <button className="button button-quiet" type="button" onClick={onCancel}>Cancel</button>}</div>
   </form>
 }
 
@@ -83,8 +90,9 @@ export default function TripJournal({ trip, user }) {
     event.preventDefault()
     setError('')
     setMessage('')
-    setSaving(true)
+    if (validateMediaReferences(draft.mediaReferences)) return
     const payload = toPayload(draft)
+    setSaving(true)
     try {
       if (editingId) await journalApi.update(editingId, payload)
       else await journalApi.create(trip.id, payload)
@@ -134,7 +142,7 @@ export default function TripJournal({ trip, user }) {
     </section>
     <section className="panel journal-compose" id="journal-editor">
       <div><p className="eyebrow">Trip journal</p><h2>{editingId ? 'Edit entry' : 'Add to the journey'}</h2></div>
-      <EntryEditor draft={draft} setDraft={setDraft} onSubmit={submit} onCancel={editingId ? cancelEdit : null} saving={saving} submitLabel={editingId ? 'Save changes' : 'Add entry'} />
+      <EntryEditor draft={draft} setDraft={setDraft} onSubmit={submit} onCancel={editingId ? cancelEdit : null} saving={saving} submitLabel={editingId ? 'Save changes' : 'Add entry'} mediaValidationError={validateMediaReferences(draft.mediaReferences)} />
     </section>
     <section className="journal-timeline" aria-label="Trip timeline">
       <div className="journal-heading"><div><p className="eyebrow">In order of time</p><h2>Trip timeline</h2></div>{!loading && <button className="button button-quiet" onClick={refresh}>Refresh</button>}</div>

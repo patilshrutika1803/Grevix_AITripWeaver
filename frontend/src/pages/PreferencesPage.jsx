@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { preferencesApi } from '../api/client'
 import { usePreferences } from '../preferences/usePreferences'
 import { savePreferences } from '../preferences/service'
 import { preferenceFormValues } from '../utils/preferences'
